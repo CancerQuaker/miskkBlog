@@ -1,0 +1,46 @@
+# 迷失客客の博客 - 本地基础设施
+# 用法：docker compose up -d
+# 包含：MySQL 8 / Redis 7 / Nacos 2.3（单机模式）
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: miskk-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # 首次启动自动执行建表脚本
+      - ../sql:/docker-entrypoint-initdb.d:ro
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-uroot", "-proot"]
+      interval: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    container_name: miskk-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  nacos:
+    image: nacos/nacos-server:v2.3.2
+    container_name: miskk-nacos
+    environment:
+      MODE: standalone
+      NACOS_AUTH_ENABLE: "false"
+      JVM_XMS: 256m
+      JVM_XMX: 512m
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+
+volumes:
+  mysql-data:
+  redis-data:

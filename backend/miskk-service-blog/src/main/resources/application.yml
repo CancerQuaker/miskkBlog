@@ -1,0 +1,63 @@
+server:
+  port: 8102
+
+spring:
+  application:
+    name: miskk-blog
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_ADDR:127.0.0.1:8848}
+  datasource:
+    # 双数据源：文章侧走主库 miskk_article，友链侧通过 @DS("friend") 路由到 miskk_friend
+    dynamic:
+      primary: article
+      strict: false
+      datasource:
+        article:
+          driver-class-name: com.mysql.cj.jdbc.Driver
+          url: jdbc:mysql://${MYSQL_ADDR:127.0.0.1:3306}/miskk_article?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+          username: ${MYSQL_USER:root}
+          password: ${MYSQL_PASSWORD:123456}
+        friend:
+          driver-class-name: com.mysql.cj.jdbc.Driver
+          url: jdbc:mysql://${MYSQL_ADDR:127.0.0.1:3306}/miskk_friend?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+          username: ${MYSQL_USER:root}
+          password: ${MYSQL_PASSWORD:123456}
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
+
+miskk:
+  internal-token: ${INTERNAL_TOKEN:miskk-internal-token-dev}
+  upload:
+    dir: ${UPLOAD_DIR:${user.home}/.miskk/uploads}
+    url-prefix: /api/static/article
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    banner: false
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+
+logging:
+  level:
+    cn.miskk.blog: info

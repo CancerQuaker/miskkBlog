@@ -1,0 +1,28 @@
+# dependencies / build output
+frontend/node_modules/
+frontend/dist/
+frontend/tsconfig.tsbuildinfo
+target/
+*.class
+
+# logs
+logs/
+*.log
+
+# uploads
+.miskk/
+
+# local assets (not referenced by code)
+wallpapers/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# local tool state
+.workbuddy/
+
+# OS
+.DS_Store
+Thumbs.db
