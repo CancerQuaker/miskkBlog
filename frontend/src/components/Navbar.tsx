@@ -100,13 +100,13 @@ function AppearancePanel() {
         <label className="accent-dot accent-custom" title="自定义颜色">
           <input
             type="color"
-            value={accent || '#7b6cf0'}
+            value={accent || '#80a942'}
             onChange={(e) => setAccent(e.target.value)}
           />
           <span className="accent-custom-plus">＋</span>
         </label>
       </div>
-      {accent && accent.toLowerCase() !== '#7b6cf0' && (
+      {accent && accent.toLowerCase() !== '#80a942' && (
         <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-sub)' }}>
           当前：<span style={{ color: accent, fontWeight: 600 }}>{accent}</span>
           <span className="accent-reset" onClick={() => setAccent(null)}> 恢复默认</span>

@@ -21,7 +21,7 @@ export function resolveTheme(mode: 'light' | 'dark' | 'eye' | 'system'): 'light'
 const antdThemes: Record<string, any> = {
   light: {
     token: {
-      colorPrimary: '#7b6cf0',
+      colorPrimary: '#80a942',
       borderRadius: 10,
       colorBgLayout: 'transparent',
       colorTextBase: '#38354a',
@@ -31,7 +31,7 @@ const antdThemes: Record<string, any> = {
   dark: {
     algorithm: antdTheme.darkAlgorithm,
     token: {
-      colorPrimary: '#9b8cff',
+      colorPrimary: '#97b864',
       borderRadius: 10,
       colorBgLayout: 'transparent',
       colorTextBase: '#f2eaf3',
@@ -40,7 +40,7 @@ const antdThemes: Record<string, any> = {
   },
   eye: {
     token: {
-      colorPrimary: '#3a9a63',
+      colorPrimary: '#80a942',
       borderRadius: 10,
       colorBgContainer: '#e4f3e3',
       colorBgElevated: '#eaf6e9',

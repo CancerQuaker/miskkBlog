@@ -32,7 +32,7 @@ export default function ArticleCard({ article }: { article: ArticleCardType }) {
         <p className="summary">{article.summary}</p>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {article.tags?.slice(0, 3).map((t) => (
-            <span key={t.id} className="tag-chip" style={{ color: t.color || undefined, background: `${t.color || '#7b6cf0'}1a` }}>
+            <span key={t.id} className="tag-chip" style={{ color: t.color || undefined, background: `${t.color || '#80a942'}1a` }}>
               {t.name}
             </span>
           ))}

@@ -54,7 +54,7 @@ export default function Dashboard() {
       series: [{
         data: a.dailyPosts.map((d) => d.count),
         type: 'line', smooth: true, areaStyle: { opacity: 0.25 },
-        color: '#7b6cf0',
+        color: '#80a942',
       }],
       grid: { left: 40, right: 20, top: 40, bottom: 28 },
     }));

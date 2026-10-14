@@ -6,11 +6,11 @@
 :root {
   --hue: 245;
 
-  --primary: #7b6cf0;
-  --primary-strong: #6554e8;
-  --primary-weak: rgba(123, 108, 240, 0.12);
+  --primary: #80a942;
+  --primary-strong: #73983b;
+  --primary-weak: rgba(128, 169, 66, 0.12);
   /* 主题色浅端：星星光标等渐变高光用；自定义主题色时由 main.tsx 行内覆盖 */
-  --primary-light: #b9adff;
+  --primary-light: #a4c177;
 
   --bg-page: #f6f6fd;
   --bg-gradient: linear-gradient(160deg, #e3e5ff 0%, #f1f0fc 38%, #e0f2ff 100%);
@@ -48,10 +48,10 @@
 }
 
 html[data-theme='dark'] {
-  --primary: #9b8cff;
-  --primary-strong: #b0a4ff;
-  --primary-weak: rgba(155, 140, 255, 0.16);
-  --primary-light: #cfc7ff;
+  --primary: #97b864;
+  --primary-strong: #a3c177;
+  --primary-weak: rgba(151, 184, 100, 0.16);
+  --primary-light: #b6cd93;
 
   --bg-page: #16121b;
   --bg-gradient: linear-gradient(160deg, #241a2e 0%, #16121b 45%, #101725 100%);
@@ -82,10 +82,10 @@ html[data-theme='dark'] {
 }
 
 html[data-theme='eye'] {
-  --primary: #3a9a63;
-  --primary-strong: #2f8553;
-  --primary-weak: rgba(58, 154, 99, 0.14);
-  --primary-light: #8fd4ab;
+  --primary: #80a942;
+  --primary-strong: #73983b;
+  --primary-weak: rgba(128, 169, 66, 0.14);
+  --primary-light: #a4c177;
 
   --bg-page: #cfe8d2;
   --bg-gradient: linear-gradient(160deg, #d8eed7 0%, #cfe8d2 50%, #e7f2dd 100%);
