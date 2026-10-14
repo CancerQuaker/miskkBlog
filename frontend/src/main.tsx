@@ -73,11 +73,14 @@ function Root() {
       root.style.removeProperty('--primary');
       root.style.removeProperty('--primary-strong');
       root.style.removeProperty('--primary-weak');
+      root.style.removeProperty('--primary-light');
       return;
     }
     root.style.setProperty('--primary', accent);
     root.style.setProperty('--primary-strong', shadeHex(accent, resolved === 'dark' ? 0.12 : -0.1));
     root.style.setProperty('--primary-weak', hexToRgba(accent, 0.14));
+    // 浅端供星星光标等渐变高光使用
+    root.style.setProperty('--primary-light', shadeHex(accent, resolved === 'dark' ? 0.3 : 0.28));
   }, [accent, resolved]);
 
   const baseTheme = antdThemes[resolved];

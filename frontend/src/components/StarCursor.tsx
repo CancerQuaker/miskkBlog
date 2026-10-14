@@ -11,8 +11,8 @@ const CLICK_WORDS = [
 /** 蹦字配色（跟随主题的糖果色） */
 const WORD_COLORS = ['#7b6cf0', '#5696ff', '#9d6bf5', '#f6a522', '#3fbf7f', '#4ecbe8'];
 
-/** 拖尾小星星的颜色 */
-const SPARK_COLORS = ['#7b6cf0', '#5696ff', '#b9adff', '#8fd0ff'];
+/** 拖尾小星星的填充色：跟随主题色（SVG 内经 style 引用 CSS 变量，换主题色实时生效） */
+const SPARK_FILLS = ['var(--primary-light)', 'var(--primary)', 'var(--primary-strong)'];
 
 /**
  * 魔法星星鼠标指针：
@@ -77,12 +77,12 @@ export default function StarCursor() {
       const el = document.createElement('div');
       el.className = 'star-spark';
       const size = 5 + Math.random() * 7;
-      const color = SPARK_COLORS[sparkSeq.current++ % SPARK_COLORS.length];
+      const fill = SPARK_FILLS[sparkSeq.current++ % SPARK_FILLS.length];
       el.style.left = `${x + (Math.random() * 16 - 8)}px`;
       el.style.top = `${y + (Math.random() * 16 - 8)}px`;
       el.innerHTML =
         `<svg viewBox="0 0 20 20" width="${size}" height="${size}">` +
-        `<path d="M10 0 L12 8 L20 10 L12 12 L10 20 L8 12 L0 10 L8 8 Z" fill="${color}"/></svg>`;
+        `<path d="M10 0 L12 8 L20 10 L12 12 L10 20 L8 12 L0 10 L8 8 Z" style="fill: ${fill}"/></svg>`;
       layer.appendChild(el);
       el.addEventListener('animationend', () => el.remove());
       setTimeout(() => el.remove(), 900);
@@ -148,8 +148,8 @@ export default function StarCursor() {
         <svg viewBox="0 0 26 26" width="26" height="26">
           <defs>
             <linearGradient id="starGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#b9adff" />
-              <stop offset="100%" stopColor="#6554e8" />
+              <stop offset="0%" style={{ stopColor: 'var(--primary-light)' }} />
+              <stop offset="100%" style={{ stopColor: 'var(--primary-strong)' }} />
             </linearGradient>
           </defs>
           <path

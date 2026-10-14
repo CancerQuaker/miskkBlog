@@ -9,6 +9,8 @@
   --primary: #7b6cf0;
   --primary-strong: #6554e8;
   --primary-weak: rgba(123, 108, 240, 0.12);
+  /* 主题色浅端：星星光标等渐变高光用；自定义主题色时由 main.tsx 行内覆盖 */
+  --primary-light: #b9adff;
 
   --bg-page: #f6f6fd;
   --bg-gradient: linear-gradient(160deg, #e3e5ff 0%, #f1f0fc 38%, #e0f2ff 100%);
@@ -49,6 +51,7 @@ html[data-theme='dark'] {
   --primary: #9b8cff;
   --primary-strong: #b0a4ff;
   --primary-weak: rgba(155, 140, 255, 0.16);
+  --primary-light: #cfc7ff;
 
   --bg-page: #16121b;
   --bg-gradient: linear-gradient(160deg, #241a2e 0%, #16121b 45%, #101725 100%);
@@ -82,6 +85,7 @@ html[data-theme='eye'] {
   --primary: #3a9a63;
   --primary-strong: #2f8553;
   --primary-weak: rgba(58, 154, 99, 0.14);
+  --primary-light: #8fd4ab;
 
   --bg-page: #cfe8d2;
   --bg-gradient: linear-gradient(160deg, #d8eed7 0%, #cfe8d2 50%, #e7f2dd 100%);
@@ -849,7 +853,7 @@ a {
   height: 26px;
   transform: translate(-50%, -50%);
   transition: transform 0.12s ease, opacity 0.18s ease;
-  filter: drop-shadow(0 0 6px rgba(123, 108, 240, 0.75));
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--primary) 75%, transparent));
 }
 /* 鼠标移出窗口后隐藏，避免星星停留在边界 */
 .star-cursor.star-hidden {
@@ -897,7 +901,7 @@ a {
   white-space: nowrap;
   transform: translate(-30%, -190%);
   animation: bubblePop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-  box-shadow: 0 4px 12px rgba(123, 108, 240, 0.4);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 40%, transparent);
 }
 @keyframes bubblePop {
   from {
