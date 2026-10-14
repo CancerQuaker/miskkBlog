@@ -52,14 +52,52 @@ export const galleryConfig = [
   { src: 'https://picsum.photos/seed/miskk9/800/550', caption: '冬天的暖炉' },
 ];
 
-/** 音乐播放列表（换成你自己的 mp3 直链即可） */
+/** 歌曲条目（meting 拉取结果与本地歌单共用） */
+export interface MusicTrack {
+  name: string;
+  artist: string;
+  url: string;
+  cover?: string;
+  lrc?: string;
+}
+
+/**
+ * 音乐播放器配置（参考 cuteleaf.cn / Firefly 主题的实现）：
+ * - mode 'meting'：通过 Meting API 拉取网易云歌单（默认，与参考站同款目录）；
+ *   主 API 失效时按 fallbackApis 顺序自动重试。
+ * - mode 'local'：使用本地 mp3（放 frontend/public/music/，支持 cover 封面与 lrc 歌词）。
+ * 公开 Meting 站点稳定性参差：injahow 目前全链路可用（音频 302 到网易 CDN），moeyao 音频正常但歌词/封面有杂讯，i-meto 歌词正常但音频代理已挂。
+ */
 export const musicConfig = {
+  mode: 'meting' as 'meting' | 'local',
+  /** 默认音量（0-1），仅首次访问生效，之后浏览器记住上次调节 */
   volume: 0.6,
-  playlist: [
-    { name: 'SoundHelix Song 1', artist: 'T. Schürger', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
-    { name: 'SoundHelix Song 2', artist: 'T. Schürger', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3' },
-    { name: 'SoundHelix Song 3', artist: 'T. Schürger', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3' },
-  ],
+  /** 默认播放模式：list 列表循环 / one 单曲循环 / random 随机播放 */
+  playMode: 'list' as 'list' | 'one' | 'random',
+  /** 播放出错自动切下一首（连续失败超过曲单长度则停下提示） */
+  autoSkipOnError: true,
+  meting: {
+    api: 'https://api.injahow.cn/meting/?server=:server&type=:type&id=:id',
+    fallbackApis: [
+      'https://api.moeyao.cn/meting/?server=:server&type=:type&id=:id',
+      'https://api.i-meto.com/meting/api?server=:server&type=:type&id=:id&r=:r',
+    ],
+    server: 'netease',
+    type: 'playlist',
+    /** 网易云歌单：知更鸟《空气中的听觉幻术》单曲+伴奏（与 cuteleaf.cn 参考站相同目录） */
+    id: '10046455237',
+  },
+  /** 本地歌单（mode 为 local 时使用） */
+  local: {
+    playlist: [
+      {
+        name: '使一颗心免于哀伤（哼唱版）',
+        artist: '知更鸟 / HOYO-MiX / Chevy',
+        url: '/music/使一颗心免于哀伤-哼唱.mp3',
+        cover: '/music/cover/109951169585655912.webp',
+      },
+    ] as MusicTrack[],
+  },
 };
 
 /** Live2D 看板娘配置（oh-my-live2d）：狐狸娘「仙狐小姐」（贤惠幼妻仙狐小姐），模型文件放在本地 public/live2d 下 */
