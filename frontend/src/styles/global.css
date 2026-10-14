@@ -373,6 +373,34 @@ a {
   text-decoration: underline;
 }
 
+/* 外观面板：特效开关行 */
+.effect-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 8px;
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+.effect-row:hover {
+  background: var(--primary-weak);
+}
+.effect-row .effect-info {
+  min-width: 0;
+}
+.effect-row .effect-label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1.4;
+}
+.effect-row .effect-desc {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  line-height: 1.4;
+}
+
 /* ---------- 首页 Hero（纳西妲草神主题背景） ---------- */
 .hero {
   position: relative;
@@ -1087,7 +1115,14 @@ a {
 
 /* ---------- Live2D 看板娘 ---------- */
 /* oh-my-live2d 的根元素是 #oml2d-stage / #oml2d-canvas / #oml2d-tips / #oml2d-statusBar（各自 fixed 定位，由库内联样式控制）；
-   桌面端定位交给库本身，这里只负责移动端隐藏兜底（JS 侧 Live2DKanban 已按窄屏/触摸设备跳过加载） */
+   桌面端定位交给库本身；外观面板关闭看板娘时通过 html.live2d-off 隐藏（库无 destroy API），
+   移动端隐藏兜底（JS 侧 Live2DKanban 已按窄屏/触摸设备/开关跳过加载） */
+html.live2d-off #oml2d-stage,
+html.live2d-off #oml2d-canvas,
+html.live2d-off #oml2d-tips,
+html.live2d-off #oml2d-statusBar {
+  display: none !important;
+}
 @media (max-width: 768px) {
   #oml2d-stage,
   #oml2d-canvas,

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useThemeStore } from '../stores/themeStore';
 
 /** 左键点击掉落的文字（社会主义核心价值观） */
 const CLICK_WORDS = [
@@ -20,10 +21,11 @@ const SPARK_COLORS = ['#7b6cf0', '#5696ff', '#b9adff', '#8fd0ff'];
  * - 左键：星星收缩旋转 + 在点击处按顺序掉落「富强/民主/文明/和谐…」彩色文字 + 星形气泡「✦」
  * - 右键：交给自定义右键菜单组件（见 ContextMenu.tsx）
  * - 鼠标移出窗口：星星淡出隐藏，避免停留在边界
- * - 仅在桌面端（pointer: fine）启用
+ * - 仅在桌面端（pointer: fine）且外观面板开启「鼠标样式」时启用
  */
 export default function StarCursor() {
-  const [enabled, setEnabled] = useState(false);
+  const starCursor = useThemeStore((s) => s.starCursor);
+  const [desktop, setDesktop] = useState(false);
   const [clicking, setClicking] = useState(false);
   const starRef = useRef<HTMLDivElement>(null);
   const wordLayerRef = useRef<HTMLDivElement>(null);
@@ -33,14 +35,19 @@ export default function StarCursor() {
   const sparkSeq = useRef(0);
   const lastSpark = useRef(0);
 
+  // 仅桌面端（pointer: fine）且外观设置开启时启用
   useEffect(() => {
     const fine = window.matchMedia('(pointer: fine)').matches;
     const wide = window.innerWidth >= 768;
-    if (!fine || !wide) return;
-    setEnabled(true);
-    document.documentElement.classList.add('star-cursor-on');
-    return () => document.documentElement.classList.remove('star-cursor-on');
+    if (fine && wide) setDesktop(true);
   }, []);
+
+  const enabled = desktop && starCursor;
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('star-cursor-on', enabled);
+    return () => document.documentElement.classList.remove('star-cursor-on');
+  }, [enabled]);
 
   useEffect(() => {
     if (!enabled) return;

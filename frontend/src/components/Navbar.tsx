@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Dropdown, Input, Avatar, Drawer, Popover } from 'antd';
+import { Dropdown, Input, Avatar, Drawer, Popover, Switch } from 'antd';
 import {
   HomeOutlined,
   SearchOutlined,
@@ -40,12 +40,13 @@ const themeOptions: { key: ThemeMode; label: string }[] = [
   { key: 'system', label: '💻 跟随系统' },
 ];
 
-/** 主题面板：模式 + 主题色（预设色板 + 自定义取色器） */
+/** 外观面板：模式 + 主题色 + 特效开关（飘落物 / 鼠标样式 / 看板娘） */
 function ThemePanel() {
-  const { mode, setMode, accent, setAccent } = useThemeStore();
+  const { mode, setMode, accent, setAccent, sakura, setSakura, starCursor, setStarCursor, live2d, setLive2d } =
+    useThemeStore();
 
   return (
-    <div style={{ width: 236, padding: '4px 2px' }}>
+    <div style={{ width: 248, padding: '4px 2px' }}>
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-faint)', marginBottom: 8 }}>外观模式</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
         {themeOptions.map((o) => (
@@ -90,6 +91,29 @@ function ThemePanel() {
           <span className="accent-reset" onClick={() => setAccent(null)}> 恢复默认</span>
         </div>
       )}
+
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-faint)', margin: '14px 0 4px' }}>特效</div>
+      <div className="effect-row">
+        <div className="effect-info">
+          <div className="effect-label">🌸 飘落物</div>
+          <div className="effect-desc">樱花花瓣缓缓飘落</div>
+        </div>
+        <Switch size="small" checked={sakura} onChange={setSakura} />
+      </div>
+      <div className="effect-row">
+        <div className="effect-info">
+          <div className="effect-label">✦ 鼠标样式</div>
+          <div className="effect-desc">星星指针 + 点击蹦字</div>
+        </div>
+        <Switch size="small" checked={starCursor} onChange={setStarCursor} />
+      </div>
+      <div className="effect-row">
+        <div className="effect-info">
+          <div className="effect-label">🦊 看板娘</div>
+          <div className="effect-desc">右下角 Live2D 小狐狸</div>
+        </div>
+        <Switch size="small" checked={live2d} onChange={setLive2d} />
+      </div>
     </div>
   );
 }
@@ -178,9 +202,9 @@ export default function Navbar() {
         {/* 音乐 */}
         <MusicPlayer panelOpen={musicOpen} onTogglePanel={() => setMusicOpen((o) => !o)} />
 
-        {/* 主题切换 + 主题色 */}
+        {/* 外观：模式 / 主题色 / 特效开关 */}
         <Popover trigger="click" placement="bottomRight" arrow={false} content={<ThemePanel />}>
-          <span className="nav-icon-btn" title="主题与主题色">
+          <span className="nav-icon-btn" title="外观">
             <BgColorsOutlined style={{ fontSize: 18 }} />
           </span>
         </Popover>

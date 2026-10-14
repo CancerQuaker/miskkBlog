@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useThemeStore } from '../stores/themeStore';
 
 interface Petal {
   el: HTMLDivElement;
@@ -12,12 +13,13 @@ interface Petal {
   opacity: number;
 }
 
-/** 樱花飘落特效（canvas-free，DOM 花瓣 + rAF） */
+/** 樱花飘落特效（canvas-free，DOM 花瓣 + rAF），外观面板可开关 */
 export default function SakuraEffect({ count = 18 }: { count?: number }) {
+  const sakura = useThemeStore((s) => s.sakura);
   const stageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (window.innerWidth < 768) return;
+    if (!sakura || window.innerWidth < 768) return;
     const stage = stageRef.current;
     if (!stage) return;
 
@@ -68,7 +70,7 @@ export default function SakuraEffect({ count = 18 }: { count?: number }) {
       cancelAnimationFrame(raf);
       petals.forEach((p) => p.el.remove());
     };
-  }, [count]);
+  }, [sakura, count]);
 
   return <div ref={stageRef} className="sakura-stage" aria-hidden />;
 }

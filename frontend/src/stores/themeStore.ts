@@ -19,18 +19,31 @@ interface ThemeState {
   mode: ThemeMode;
   /** 自定义主题色（hex），null 表示用各主题内置色 */
   accent: string | null;
+  /** 特效开关：樱花飘落物 / 星星鼠标样式 / Live2D 看板娘 */
+  sakura: boolean;
+  starCursor: boolean;
+  live2d: boolean;
   setMode: (mode: ThemeMode) => void;
   setAccent: (accent: string | null) => void;
+  setSakura: (on: boolean) => void;
+  setStarCursor: (on: boolean) => void;
+  setLive2d: (on: boolean) => void;
 }
 
-/** 主题模式：白 / 暗 / 护眼 / 跟随系统；主题色可自定义 */
+/** 主题模式：白 / 暗 / 护眼 / 跟随系统；主题色与特效开关可自定义 */
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set) => ({
       mode: 'system',
       accent: null,
+      sakura: true,
+      starCursor: true,
+      live2d: true,
       setMode: (mode) => set({ mode }),
       setAccent: (accent) => set({ accent }),
+      setSakura: (on) => set({ sakura: on }),
+      setStarCursor: (on) => set({ starCursor: on }),
+      setLive2d: (on) => set({ live2d: on }),
     }),
     { name: 'miskk-theme' },
   ),
