@@ -234,6 +234,145 @@ a {
   color: var(--primary);
 }
 
+/* 导航栏图标按钮（移动端搜索入口 / 主题入口） */
+.nav-icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-main);
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.nav-icon-btn:hover {
+  background: var(--primary-weak);
+  color: var(--primary);
+}
+
+/* 搜索：桌面端显示输入框，移动端只显示图标 */
+.nav-search {
+  display: inline-flex;
+  align-items: center;
+}
+.nav-search .nav-icon-btn {
+  display: none;
+}
+@media (max-width: 900px) {
+  .nav-search .nav-search-input,
+  .nav-search .ant-input-affix-wrapper {
+    display: none;
+  }
+  .nav-search .nav-icon-btn {
+    display: inline-flex;
+  }
+}
+
+/* 登录按钮：渐变胶囊 */
+.nav-login-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 18px;
+  height: 36px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-strong));
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px var(--primary-weak);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+.nav-login-btn:hover {
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px var(--primary-weak);
+}
+.nav-login-btn:active {
+  transform: translateY(0) scale(0.96);
+}
+
+/* 主题面板（模式 + 主题色） */
+.theme-chip {
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-main);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+.theme-chip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.theme-chip.active {
+  background: var(--primary-weak);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+}
+.accent-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 2px solid transparent;
+  box-shadow: inset 0 0 0 2px var(--bg-card), 0 1px 4px rgba(0, 0, 0, 0.15);
+  transition: transform 0.15s, border-color 0.15s;
+  position: relative;
+}
+.accent-dot:hover {
+  transform: scale(1.15);
+}
+.accent-dot.selected {
+  border-color: var(--primary);
+  transform: scale(1.12);
+}
+.accent-dot-default {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-sub);
+}
+.accent-custom {
+  background: conic-gradient(#f07ba0, #f6a522, #3fbf7f, #4ecbe8, #5696ff, #9d6bf5, #f07ba0);
+  overflow: hidden;
+}
+.accent-custom input[type='color'] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+  border: none;
+  padding: 0;
+}
+.accent-custom-plus {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+.accent-reset {
+  color: var(--primary);
+  cursor: pointer;
+  margin-left: 6px;
+}
+.accent-reset:hover {
+  text-decoration: underline;
+}
+
 /* ---------- 首页 Hero（纳西妲草神主题背景） ---------- */
 .hero {
   position: relative;
@@ -650,8 +789,12 @@ a {
   width: 26px;
   height: 26px;
   transform: translate(-50%, -50%);
-  transition: transform 0.12s ease;
+  transition: transform 0.12s ease, opacity 0.18s ease;
   filter: drop-shadow(0 0 6px rgba(123, 108, 240, 0.75));
+}
+/* 鼠标移出窗口后隐藏，避免星星停留在边界 */
+.star-cursor.star-hidden {
+  opacity: 0;
 }
 .star-cursor.clicking {
   transform: translate(-50%, -50%) scale(0.82) rotate(-18deg);
@@ -943,16 +1086,14 @@ a {
 }
 
 /* ---------- Live2D 看板娘 ---------- */
-.oml2d-container {
-  position: fixed;
-  right: 0;
-  bottom: 0;
-  z-index: 150;
-  pointer-events: none;
-}
+/* oh-my-live2d 的根元素是 #oml2d-stage / #oml2d-canvas / #oml2d-tips / #oml2d-statusBar（各自 fixed 定位，由库内联样式控制）；
+   桌面端定位交给库本身，这里只负责移动端隐藏兜底（JS 侧 Live2DKanban 已按窄屏/触摸设备跳过加载） */
 @media (max-width: 768px) {
-  .oml2d-container {
-    display: none;
+  #oml2d-stage,
+  #oml2d-canvas,
+  #oml2d-tips,
+  #oml2d-statusBar {
+    display: none !important;
   }
 }
 
@@ -1044,4 +1185,50 @@ a {
 }
 .site-footer a {
   color: var(--primary);
+}
+
+/* ---------- 移动端适配 ---------- */
+@media (max-width: 768px) {
+  .navbar-inner {
+    padding: 0 12px;
+    gap: 8px;
+  }
+  .nav-logo {
+    font-size: 16px;
+    gap: 8px;
+  }
+  .page-container {
+    padding: 16px 14px 64px;
+  }
+  .music-panel {
+    width: min(320px, calc(100vw - 24px));
+  }
+  .article-card .body {
+    padding: 14px 14px 12px;
+  }
+  .comment-item {
+    gap: 10px;
+  }
+  .comment-content .when {
+    display: block;
+    margin: 2px 0 0;
+  }
+  .site-footer {
+    padding: 24px 14px 20px;
+  }
+}
+@media (max-width: 640px) {
+  /* 窄屏隐藏站名文字，只留星星 Logo 图标 */
+  .nav-logo .logo-switch > span {
+    display: none;
+  }
+  .nav-login-btn {
+    padding: 0 14px;
+  }
+  .hero {
+    padding: 40px 18px;
+  }
+  .markdown-body {
+    font-size: 15px;
+  }
 }

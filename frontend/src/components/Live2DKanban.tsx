@@ -10,8 +10,10 @@ let instance: ReturnType<typeof loadOml2d> | null = null;
  */
 export default function Live2DKanban() {
   useEffect(() => {
-    if (window.innerWidth < 768) return;
-    if (instance) return;
+    // 移动端（窄屏或触摸设备）不加载看板娘，避免遮挡内容与流量消耗
+    const narrow = window.matchMedia('(max-width: 768px)').matches;
+    const touch = window.matchMedia('(pointer: coarse)').matches;
+    if (narrow || touch || instance) return;
 
     const hour = new Date().getHours();
     const dayMsg = live2dConfig.welcome[0];

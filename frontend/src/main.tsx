@@ -6,7 +6,7 @@ import zhCN from 'antd/locale/zh_CN';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import App from './App';
-import { useThemeStore } from './stores/themeStore';
+import { useThemeStore, shadeHex, hexToRgba } from './stores/themeStore';
 import './styles/global.css';
 import 'highlight.js/styles/github-dark.css';
 
@@ -54,6 +54,7 @@ const antdThemes: Record<string, any> = {
 
 function Root() {
   const mode = useThemeStore((s) => s.mode);
+  const accent = useThemeStore((s) => s.accent);
   // 跟随系统模式时，监听系统主题变化实时切换
   const [, force] = useState(0);
   useEffect(() => {
@@ -65,8 +66,27 @@ function Root() {
   const resolved = resolveTheme(mode);
   document.documentElement.dataset.theme = resolved;
 
+  // 自定义主题色：以行内 CSS 变量覆盖各主题内置的 --primary 系列
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!accent) {
+      root.style.removeProperty('--primary');
+      root.style.removeProperty('--primary-strong');
+      root.style.removeProperty('--primary-weak');
+      return;
+    }
+    root.style.setProperty('--primary', accent);
+    root.style.setProperty('--primary-strong', shadeHex(accent, resolved === 'dark' ? 0.12 : -0.1));
+    root.style.setProperty('--primary-weak', hexToRgba(accent, 0.14));
+  }, [accent, resolved]);
+
+  const baseTheme = antdThemes[resolved];
+  const antdThemeApplied = accent
+    ? { ...baseTheme, token: { ...baseTheme.token, colorPrimary: accent } }
+    : baseTheme;
+
   return (
-    <ConfigProvider locale={zhCN} theme={antdThemes[resolved]}>
+    <ConfigProvider locale={zhCN} theme={antdThemeApplied}>
       <AntApp>
         <BrowserRouter>
           <App />

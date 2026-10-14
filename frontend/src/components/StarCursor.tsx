@@ -17,8 +17,9 @@ const SPARK_COLORS = ['#7b6cf0', '#5696ff', '#b9adff', '#8fd0ff'];
  * 魔法星星鼠标指针：
  * - 启用后隐藏系统光标，用一颗缓慢旋转的四角星代替（比系统光标稍大）
  * - 鼠标移动时沿途洒落小星星拖尾
- * - 左键：星星收缩旋转 + 在点击处向下掉落「富强/民主/文明/和谐…」彩色文字 + 星形气泡「✦」
+ * - 左键：星星收缩旋转 + 在点击处按顺序掉落「富强/民主/文明/和谐…」彩色文字 + 星形气泡「✦」
  * - 右键：交给自定义右键菜单组件（见 ContextMenu.tsx）
+ * - 鼠标移出窗口：星星淡出隐藏，避免停留在边界
  * - 仅在桌面端（pointer: fine）启用
  */
 export default function StarCursor() {
@@ -101,7 +102,8 @@ export default function StarCursor() {
     const onDown = (e: MouseEvent) => {
       if (e.button !== 0) return;
       setClicking(true);
-      const word = CLICK_WORDS[Math.floor(Math.random() * CLICK_WORDS.length)];
+      // 点击词按顺序蹦出：富强 → 民主 → 文明 → …（wordSeq 与配色共用序号，循环推进）
+      const word = CLICK_WORDS[wordSeq.current % CLICK_WORDS.length];
       spawnWord(e.clientX, e.clientY + 14, word);
       // 点击瞬间炸开一圈小星星
       for (let i = 0; i < 6; i++) spawnSpark(e.clientX, e.clientY);
@@ -110,15 +112,23 @@ export default function StarCursor() {
       if (e.button === 0) setClicking(false);
     };
 
+    // 鼠标移出窗口后星星淡出隐藏，回到窗口再显示
+    const onDocLeave = () => starRef.current?.classList.add('star-hidden');
+    const onDocEnter = () => starRef.current?.classList.remove('star-hidden');
+
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mousedown', onDown);
     window.addEventListener('mouseup', onUp);
+    document.documentElement.addEventListener('mouseleave', onDocLeave);
+    document.documentElement.addEventListener('mouseenter', onDocEnter);
     raf = requestAnimationFrame(loop);
 
     return () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mousedown', onDown);
       window.removeEventListener('mouseup', onUp);
+      document.documentElement.removeEventListener('mouseleave', onDocLeave);
+      document.documentElement.removeEventListener('mouseenter', onDocEnter);
       cancelAnimationFrame(raf);
     };
   }, [enabled]);

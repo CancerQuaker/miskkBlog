@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Dropdown, Input, Avatar, Drawer } from 'antd';
+import { Dropdown, Input, Avatar, Drawer, Popover } from 'antd';
 import {
   HomeOutlined,
   SearchOutlined,
@@ -12,7 +12,7 @@ import {
   DownOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../stores/authStore';
-import { useThemeStore, ThemeMode } from '../stores/themeStore';
+import { useThemeStore, ThemeMode, ACCENT_PRESETS } from '../stores/themeStore';
 import MusicPlayer from '../components/MusicPlayer';
 import { siteConfig } from '../config/site';
 
@@ -40,11 +40,64 @@ const themeOptions: { key: ThemeMode; label: string }[] = [
   { key: 'system', label: '💻 跟随系统' },
 ];
 
+/** 主题面板：模式 + 主题色（预设色板 + 自定义取色器） */
+function ThemePanel() {
+  const { mode, setMode, accent, setAccent } = useThemeStore();
+
+  return (
+    <div style={{ width: 236, padding: '4px 2px' }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-faint)', marginBottom: 8 }}>外观模式</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+        {themeOptions.map((o) => (
+          <button
+            key={o.key}
+            className={`theme-chip ${mode === o.key ? 'active' : ''}`}
+            onClick={() => setMode(o.key)}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-faint)', margin: '14px 0 8px' }}>主题色</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+        {ACCENT_PRESETS.map((p) => {
+          const selected = p.color === accent || (p.color === null && accent === null);
+          return (
+            <span
+              key={p.name}
+              className={`accent-dot ${selected ? 'selected' : ''}`}
+              title={p.name}
+              style={p.color ? { background: p.color } : undefined}
+              onClick={() => setAccent(p.color)}
+            >
+              {!p.color && <span className="accent-dot-default">默</span>}
+            </span>
+          );
+        })}
+        <label className="accent-dot accent-custom" title="自定义颜色">
+          <input
+            type="color"
+            value={accent || '#7b6cf0'}
+            onChange={(e) => setAccent(e.target.value)}
+          />
+          <span className="accent-custom-plus">＋</span>
+        </label>
+      </div>
+      {accent && accent.toLowerCase() !== '#7b6cf0' && (
+        <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-sub)' }}>
+          当前：<span style={{ color: accent, fontWeight: 600 }}>{accent}</span>
+          <span className="accent-reset" onClick={() => setAccent(null)}> 恢复默认</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
-  const { mode, setMode } = useThemeStore();
   const [logoHover, setLogoHover] = useState(false);
   const [search, setSearch] = useState('');
   const [musicOpen, setMusicOpen] = useState(false);
@@ -104,42 +157,33 @@ export default function Navbar() {
 
         <nav className="nav-menu" style={{ justifyContent: 'center' }}>{links}</nav>
 
-        {/* 搜索框 */}
-        <Input
-          allowClear
-          size="middle"
-          prefix={<SearchOutlined style={{ color: 'var(--text-faint)' }} />}
-          placeholder="搜索文章…"
-          style={{ width: 180, borderRadius: 999 }}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onPressEnter={(e) => doSearch((e.target as HTMLInputElement).value)}
-        />
+        {/* 搜索框：桌面端输入框，移动端仅图标（跳转搜索页） */}
+        <div className="nav-search">
+          <Input
+            allowClear
+            size="middle"
+            className="nav-search-input"
+            prefix={<SearchOutlined style={{ color: 'var(--text-faint)' }} />}
+            placeholder="搜索文章…"
+            style={{ width: 180, borderRadius: 999 }}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onPressEnter={(e) => doSearch((e.target as HTMLInputElement).value)}
+          />
+          <span className="nav-icon-btn" title="搜索" onClick={() => navigate('/search')}>
+            <SearchOutlined style={{ fontSize: 18 }} />
+          </span>
+        </div>
 
         {/* 音乐 */}
         <MusicPlayer panelOpen={musicOpen} onTogglePanel={() => setMusicOpen((o) => !o)} />
 
-        {/* 主题切换 */}
-        <Dropdown
-          trigger={['click']}
-          menu={{
-            items: themeOptions.map((o) => ({ key: o.key, label: o.label })),
-            selectedKeys: [mode],
-            selectable: true,
-            onSelect: ({ key }) => setMode(key as ThemeMode),
-          }}
-        >
-          <span
-            style={{
-              width: 40, height: 40, borderRadius: 10, display: 'inline-flex',
-              alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-              color: 'var(--text-main)',
-            }}
-            title="主题"
-          >
+        {/* 主题切换 + 主题色 */}
+        <Popover trigger="click" placement="bottomRight" arrow={false} content={<ThemePanel />}>
+          <span className="nav-icon-btn" title="主题与主题色">
             <BgColorsOutlined style={{ fontSize: 18 }} />
           </span>
-        </Dropdown>
+        </Popover>
 
         {/* 登录态 */}
         {user ? (
@@ -165,8 +209,9 @@ export default function Navbar() {
             </span>
           </Dropdown>
         ) : (
-          <Link to="/login" className="nav-link" style={{ color: 'var(--primary)', fontWeight: 600 }}>
-            登录
+          <Link to="/login" className="nav-login-btn" title="登录 / 注册">
+            <UserOutlined style={{ fontSize: 14 }} />
+            <span className="nav-login-text">登录</span>
           </Link>
         )}
 
