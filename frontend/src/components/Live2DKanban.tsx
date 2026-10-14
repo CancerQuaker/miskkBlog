@@ -49,13 +49,15 @@ export default function Live2DKanban() {
         },
       ],
       tips: {
-        // 气泡配色跟随站点主题：玻璃卡片底 + 主题色描边（CSS 变量随 html[data-theme]
-        // 与用户自选主题色切换，内联样式里的 var() 会实时解析，覆盖库默认的蓝底白字）
+        // 气泡底色/边框跟随当前主题的卡片样式（--bg-card-transparent / --border），
+        // 文字颜色用 --primary（外观面板自选主题色时经 main.tsx 行内覆盖同步变化）；
+        // CSS 变量在内联样式中实时解析，整体覆盖库默认的蓝底白字
         style: {
           backgroundColor: 'var(--bg-card-transparent)',
-          color: 'var(--text-main)',
-          border: '1.5px solid var(--primary)',
-          filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.18))',
+          border: '1px solid var(--border)',
+          color: 'var(--primary)',
+          boxShadow: 'var(--shadow-card)',
+          filter: 'none',
           backdropFilter: 'blur(8px)',
           WebkitBackdropFilter: 'blur(8px)',
         },
