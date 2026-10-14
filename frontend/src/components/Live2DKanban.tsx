@@ -31,6 +31,8 @@ export default function Live2DKanban() {
 
     instance = loadOml2d({
       dockedPosition: 'right',
+      // 状态条（加载/切换模型提示）也跟随主题色；var() 在内联样式中同样生效
+      primaryColor: 'var(--primary)',
       menus: {
         disable: true,
       },
@@ -47,6 +49,16 @@ export default function Live2DKanban() {
         },
       ],
       tips: {
+        // 气泡配色跟随站点主题：玻璃卡片底 + 主题色描边（CSS 变量随 html[data-theme]
+        // 与用户自选主题色切换，内联样式里的 var() 会实时解析，覆盖库默认的蓝底白字）
+        style: {
+          backgroundColor: 'var(--bg-card-transparent)',
+          color: 'var(--text-main)',
+          border: '1.5px solid var(--primary)',
+          filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.18))',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+        },
         idleTips: {
           message: live2dConfig.tips,
           interval: 12000,
