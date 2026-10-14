@@ -10,6 +10,10 @@ import {
   DashboardOutlined,
   BgColorsOutlined,
   DownOutlined,
+  SunOutlined,
+  MoonOutlined,
+  EyeOutlined,
+  LaptopOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../stores/authStore';
 import { useThemeStore, ThemeMode, ACCENT_PRESETS } from '../stores/themeStore';
@@ -40,14 +44,21 @@ const themeOptions: { key: ThemeMode; label: string }[] = [
   { key: 'system', label: '💻 跟随系统' },
 ];
 
-/** 外观面板：模式 + 主题色 + 特效开关（飘落物 / 鼠标样式 / 看板娘） */
-function ThemePanel() {
-  const { mode, setMode, accent, setAccent, sakura, setSakura, starCursor, setStarCursor, live2d, setLive2d } =
-    useThemeStore();
+/** 亮度按钮图标跟随当前模式切换（跟随系统时显示显示器图标） */
+const modeIcons: Record<ThemeMode, React.ReactNode> = {
+  light: <SunOutlined style={{ fontSize: 18 }} />,
+  dark: <MoonOutlined style={{ fontSize: 18 }} />,
+  eye: <EyeOutlined style={{ fontSize: 18 }} />,
+  system: <LaptopOutlined style={{ fontSize: 18 }} />,
+};
+
+/** 亮度面板：亮色 / 暗色 / 护眼 / 跟随系统 */
+function BrightnessPanel() {
+  const { mode, setMode } = useThemeStore();
 
   return (
-    <div style={{ width: 248, padding: '4px 2px' }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-faint)', marginBottom: 8 }}>外观模式</div>
+    <div style={{ width: 232, padding: '4px 2px' }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-faint)', marginBottom: 8 }}>亮度</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
         {themeOptions.map((o) => (
           <button
@@ -59,8 +70,18 @@ function ThemePanel() {
           </button>
         ))}
       </div>
+    </div>
+  );
+}
 
-      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-faint)', margin: '14px 0 8px' }}>主题色</div>
+/** 外观面板：主题色 + 特效开关（飘落物 / 鼠标样式 / 看板娘） */
+function AppearancePanel() {
+  const { accent, setAccent, sakura, setSakura, starCursor, setStarCursor, live2d, setLive2d } =
+    useThemeStore();
+
+  return (
+    <div style={{ width: 248, padding: '4px 2px' }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-faint)', marginBottom: 8 }}>主题色</div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
         {ACCENT_PRESETS.map((p) => {
           const selected = p.color === accent || (p.color === null && accent === null);
@@ -122,6 +143,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
+  const mode = useThemeStore((s) => s.mode);
   const [logoHover, setLogoHover] = useState(false);
   const [search, setSearch] = useState('');
   const [musicOpen, setMusicOpen] = useState(false);
@@ -202,9 +224,16 @@ export default function Navbar() {
         {/* 音乐 */}
         <MusicPlayer panelOpen={musicOpen} onTogglePanel={() => setMusicOpen((o) => !o)} />
 
-        {/* 外观：模式 / 主题色 / 特效开关 */}
-        <Popover trigger="click" placement="bottomRight" arrow={false} content={<ThemePanel />}>
-          <span className="nav-icon-btn" title="外观">
+        {/* 亮度：亮色 / 暗色 / 护眼 / 跟随系统（图标随当前模式切换） */}
+        <Popover trigger="click" placement="bottomRight" arrow={false} content={<BrightnessPanel />}>
+          <span className="nav-icon-btn" title={`亮度：${themeOptions.find((o) => o.key === mode)?.label.replace(/^\S+\s/, '') ?? ''}`}>
+            {modeIcons[mode]}
+          </span>
+        </Popover>
+
+        {/* 外观：主题色 / 特效开关 */}
+        <Popover trigger="click" placement="bottomRight" arrow={false} content={<AppearancePanel />}>
+          <span className="nav-icon-btn" title="外观设置">
             <BgColorsOutlined style={{ fontSize: 18 }} />
           </span>
         </Popover>
