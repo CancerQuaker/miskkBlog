@@ -1115,13 +1115,16 @@ a {
 
 /* ---------- Live2D 看板娘 ---------- */
 /* oh-my-live2d 的根元素是 #oml2d-stage / #oml2d-canvas / #oml2d-tips / #oml2d-statusBar（各自 fixed 定位，由库内联样式控制）；
-   桌面端定位交给库本身；外观面板关闭看板娘时通过 html.live2d-off 隐藏（库无 destroy API），
-   移动端隐藏兜底（JS 侧 Live2DKanban 已按窄屏/触摸设备/开关跳过加载） */
+   桌面端定位交给库本身；外观面板关闭看板娘时通过 html.live2d-off 隐藏（库无 destroy API）。
+   注意必须用 visibility 而非 display：display:none 会让 stage 尺寸塌缩为 0，库的鼠标跟随按画布矩形
+   归一化坐标会算出 NaN/极端值，把尾巴等物理摆参数推乱，重新显示后摆动不自然；
+   visibility:hidden 保留布局矩形，坐标计算不受影响。移动端隐藏兜底（JS 侧 Live2DKanban 已按窄屏/触摸设备/开关跳过加载） */
 html.live2d-off #oml2d-stage,
 html.live2d-off #oml2d-canvas,
 html.live2d-off #oml2d-tips,
 html.live2d-off #oml2d-statusBar {
-  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 @media (max-width: 768px) {
   #oml2d-stage,

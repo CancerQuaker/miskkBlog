@@ -37,11 +37,12 @@ export default function Live2DKanban() {
       models: [
         {
           path: live2dConfig.modelUrl,
+          // 想再调大小只改这里：scale 按比例缩放模型，stageStyle 是舞台（画布）尺寸
           position: [0, 30],
-          scale: 0.068,
+          scale: 0.078,
           stageStyle: {
-            height: 200,
-            width: 230,
+            height: 220,
+            width: 245,
           },
         },
       ],
