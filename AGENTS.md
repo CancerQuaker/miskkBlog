@@ -39,13 +39,13 @@ Vite dev server 长时间运行后偶发吐出新旧混杂的模块代码（文�
 - **前端**：状态用 zustand（`src/stores`），站点配置在 `src/config/site.ts`。
 - **主题系统双轨**：CSS 变量按 `html[data-theme='light|dark|eye']` 三块定义（`src/styles/global.css`），AntD token 在 `main.tsx` 同步切换。默认主题色 `#80a942`（草绿）。
 - **主题色覆盖链**：用户自选主题色存 zustand `accent`（null = 用主题内置色），在 `main.tsx` 以行内 CSS 变量覆盖 `--primary / --primary-strong / --primary-weak / --primary-light`（行内样式优先级高于所有主题块）。组件一律消费 `var(--primary*)`，不要硬编码主题色；SVG 的 `fill / stopColor` 想吃 `var()` 必须写进 `style` 属性，写表现属性不生效。
-- **看板娘**：oh-my-live2d 挂在独立根元素 `#oml2d-stage`（DOM 里没有 `#oml2d` 包装层），选择器别写错。
+- **看板娘**：oh-my-live2d 挂在独立根元素 `#oml2d-stage`（DOM 里没有 `#oml2d` 包装层），选择器别写错。模型为本地文件 `frontend/public/live2d/senko/`（仙狐小姐），交互动作由 `senko.model3.json` 的命中区/动作组定义（`TapHead` / `TapBody` 命名须符合 Cubism 规范）。
 
 ## 本机运行环境（Windows，这台机器实际用法）
 
-- 不用 docker compose。MySQL 为手动启动的 mysqld：datadir `D:/miskk-infra/mysql-data`，账号 root/root（README 默认 root/123456 仅适用 docker）。
+- 不用 docker compose。MySQL 为手动启动的 mysqld：datadir `D:/miskk-infra/mysql-data`，账号 root/123456（与 README、后端 application.yml 默认值一致）。
 - Nacos 在 `D:\miskk-infra\nacos`（standalone）；Redis 为 Windows 服务。
-- 网络受限：GitHub 克隆/下载走 ghfast 镜像前缀。
+- 网络受限：GitHub 网页/文件下载走 ghfast 镜像前缀（`https://ghfast.top/https://github.com/...`）；git 对 github.com 的推拉已配全局代理 `http.https://github.com.proxy=http://127.0.0.1:7890`（本地代理 7890 端口，代理未开时 push 会连不上）。远程仓库 `github.com/CancerQuaker/miskkBlog`，gh CLI 登录账号 CancerQuaker。
 - 日志输出到仓库根 `logs/`（已 gitignore）；Knife4j 文档在各服务 `/doc.html`。
 
 ## 编码约定

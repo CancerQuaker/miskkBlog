@@ -15,8 +15,8 @@ mysql -uroot -p < sql/03_miskk_friend.sql
 | admin | admin123 | 管理员（role=1） |
 
 > `01_miskk_user.sql` 中的种子管理员密码哈希由 Hutool BCrypt 生成（见脚本注释）。
-> 若哈希与你使用的 Hutool 版本不兼容（几乎不会），可运行项目根目录
-> `tools/GenBcryptHash.java` 重新生成并替换。
+> 若哈希与你使用的 Hutool 版本不兼容（几乎不会），用 Hutool 的
+> `BCrypt.hashpw("admin123")` 重新生成并替换即可。
 
 ## 注意
 
