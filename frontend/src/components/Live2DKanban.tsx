@@ -10,6 +10,7 @@ let instance: ReturnType<typeof loadOml2d> | null = null;
  * 闲置时轮播可爱语录；移动端（窄屏/触摸设备）不加载，外观面板可开关
  * （库未提供 destroy，关闭时通过 html.live2d-off 类隐藏根元素）。
  * 「返回顶部」按钮已移到左下角，二者互不遮挡。
+ * 交互：单击头部→睡觉，双击头部→唱歌，点击身体→Anim 动作（需模型文件支持对应的 hit areas）。
  */
 export default function Live2DKanban() {
   const live2d = useThemeStore((s) => s.live2d);
@@ -46,6 +47,7 @@ export default function Live2DKanban() {
             height: 220,
             width: 245,
           },
+          mobileScale: 0.078,
         },
       ],
       tips: {

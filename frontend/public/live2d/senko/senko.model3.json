@@ -15,22 +15,22 @@
           "Weight": 1
         }
       ],
-      "Tap": [
+      "TapBody": [
         {
           "Name": "Anim",
           "File": "motions/Anim_1.motion3.json",
           "Weight": 1
         }
       ],
-      "Taphead": [
-        {
-          "Name": "Sing",
-          "File": "motions/Singing.motion3.json",
-          "Weight": 1
-        },
+      "TapHead": [
         {
           "Name": "Sleep",
           "File": "motions/Sleeping.motion3.json",
+          "Weight": 1
+        },
+        {
+          "Name": "Sing",
+          "File": "motions/Singing.motion3.json",
           "Weight": 1
         }
       ],
@@ -58,6 +58,10 @@
     {
       "Name": "head",
       "Id": "head"
+    },
+    {
+      "Name": "body",
+      "Id": "body"
     }
   ],
   "LipSync": true,
