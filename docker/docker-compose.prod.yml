@@ -1,0 +1,152 @@
+# 迷失客客の博客 —— 生产环境一键部署（任意装好 Docker 的机器，Ubuntu 云服务器验证目标）
+#
+# 用法（服务器上）：
+#   git clone https://github.com/CancerQuaker/miskkBlog.git
+#   cd miskkBlog/docker
+#   cp .env.example .env    # 修改 MYSQL_PASSWORD / JWT_SECRET / INTERNAL_TOKEN
+#   bash deploy.sh          # 等价于 docker compose -f docker-compose.prod.yml up -d --build
+#
+# 安全模型：只有 nginx 暴露 80 端口，MySQL/Redis/Nacos/网关都只在 compose 内部网络可达，
+# 云服务器安全组只需放行 80/443。
+# 数据落盘：mysql-data / redis-data 卷 + ./uploads/（上传图片），备份这三处即可。
+# 内存建议 2核4G 起步；2核2G 可给三个 Java 服务加环境变量 JAVA_TOOL_OPTIONS=-Xmx256m，
+# 并把 nacos 的 JVM_XMX 调到 256m。
+#
+# 本地开发只想起基础设施（MySQL/Redis/Nacos）请用同目录的 docker-compose.yml。
+
+name: miskk
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: miskk-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:?请在 docker/.env 中设置 MYSQL_PASSWORD}
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ../sql:/docker-entrypoint-initdb.d:ro   # 首次启动自动执行三个建库脚本
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    container_name: miskk-redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+
+  nacos:
+    image: nacos/nacos-server:v2.3.2
+    container_name: miskk-nacos
+    restart: unless-stopped
+    environment:
+      MODE: standalone
+      NACOS_AUTH_ENABLE: "false"
+      JVM_XMS: 256m
+      JVM_XMX: 512m
+      TZ: Asia/Shanghai
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8848/nacos/v1/console/health/readiness"]
+      interval: 10s
+      retries: 30
+      start_period: 20s
+
+  # ---- 三个后端服务：同一个 Dockerfile，按 MODULE 参数分别构建 ----
+  gateway:
+    image: miskk-backend:gateway
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+      args:
+        MODULE: backend/miskk-gateway
+        MAVEN_MIRROR: ${MAVEN_MIRROR:-}
+    container_name: miskk-gateway
+    restart: unless-stopped
+    environment: &backend-env
+      TZ: Asia/Shanghai
+      NACOS_ADDR: nacos:8848
+      MYSQL_ADDR: mysql:3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 docker/.env 中设置 MYSQL_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      JWT_SECRET: ${JWT_SECRET:?请在 docker/.env 中设置 JWT_SECRET（≥32位随机字符串）}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:?请在 docker/.env 中设置 INTERNAL_TOKEN}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_USER: ${MAIL_USER:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+    depends_on:
+      nacos:
+        condition: service_healthy
+
+  user:
+    image: miskk-backend:user
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+      args:
+        MODULE: backend/miskk-service-user
+        MAVEN_MIRROR: ${MAVEN_MIRROR:-}
+    container_name: miskk-user
+    restart: unless-stopped
+    environment:
+      <<: *backend-env
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - ./uploads:/data/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      nacos:
+        condition: service_healthy
+
+  blog:
+    image: miskk-backend:blog
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+      args:
+        MODULE: backend/miskk-service-blog
+        MAVEN_MIRROR: ${MAVEN_MIRROR:-}
+    container_name: miskk-blog
+    restart: unless-stopped
+    environment:
+      <<: *backend-env
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - ./uploads:/data/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      nacos:
+        condition: service_healthy
+
+  # ---- 前端 + 反向代理：唯一对外入口 ----
+  nginx:
+    image: miskk-frontend:latest
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+      args:
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmjs.org}
+    container_name: miskk-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - gateway
+
+volumes:
+  mysql-data:
+  redis-data:

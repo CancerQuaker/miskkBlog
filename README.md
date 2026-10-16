@@ -18,7 +18,9 @@ miskkBlog/
 │   └── miskk-service-blog/     # 博客服务 :8102 —— 文章/分类/标签/评论/点赞/浏览/分享/时长 + 友链 + 管理端（统计聚合/系统监控，双数据源）
 ├── frontend/                   # 前端（Vite 6 + React 18 + TS + AntD 5）
 ├── sql/                        # MySQL 建库脚本（三库：user / article / friend）
-└── docker/docker-compose.yml   # MySQL + Redis + Nacos 一键启动
+└── docker/
+    ├── docker-compose.yml      # 本地开发：MySQL + Redis + Nacos 一键启动
+    └── docker-compose.prod.yml # 生产部署：拉代码一键起全栈（含构建），见「生产部署」
 ```
 
 ## 技术栈
@@ -106,6 +108,26 @@ Vite 开发服务器把 `/api` 代理到网关 `http://localhost:8080`。
 | `UPLOAD_DIR` | `~/.miskk/uploads` | 图片上传目录（用户/博客服务共享） |
 
 > QQ / 微信登录需要企业资质才能开通互联平台，本项目已预留接口与提示（`/auth/qq`、`/auth/wechat`），GitHub OAuth 已完整实现，配置 Client-ID 后即可使用。
+
+### 6. 生产部署（Ubuntu 云服务器等）
+
+全容器一键部署：后端在容器内 Maven 多阶段构建，前端 npm build 后由 nginx 托管并反代 `/api`。服务器上只需装好 Docker（含 compose 插件）：
+
+```bash
+git clone https://github.com/CancerQuaker/miskkBlog.git
+cd miskkBlog/docker
+cp .env.example .env    # 修改 MYSQL_PASSWORD / JWT_SECRET / INTERNAL_TOKEN
+bash deploy.sh          # 等价于 docker compose -f docker-compose.prod.yml up -d --build
+```
+
+说明：
+
+- **安全模型**：只有 nginx 暴露 80 端口，MySQL/Redis/Nacos/网关都在 compose 内部网络，云安全组只需放行 80/443。
+- **首次构建**约需几分钟（容器内编译）；国内服务器可在 `.env` 配 `MAVEN_MIRROR` / `NPM_REGISTRY` 镜像加速。
+- **数据备份**：`mysql-data` / `redis-data` 卷 + `docker/uploads/` 目录（上传图片）。
+- **HTTPS**：宿主机再加一层 Caddy / certbot 终止证书，反代到 80 即可。
+- **内存**：建议 2核4G 起步；2核2G 可给三个 Java 服务加 `JAVA_TOOL_OPTIONS=-Xmx256m`、Nacos `JVM_XMX=256m`。
+- 首次启动自动执行 `sql/` 三个建库脚本（仅空数据卷时）；默认管理员 `admin / admin123`，部署后请尽快改密。
 
 ## 接口文档（Knife4j）
 

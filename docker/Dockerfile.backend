@@ -1,0 +1,33 @@
+# syntax=docker/dockerfile:1
+# 后端通用多阶段构建镜像：--build-arg MODULE=<模块路径>，如 backend/miskk-gateway
+# 构建上下文必须是仓库根目录（父 POM 在根目录）
+FROM maven:3.9-eclipse-temurin-17 AS build
+ARG MODULE
+# 国内构建加速（可选）：--build-arg MAVEN_MIRROR=https://maven.aliyun.com/repository/public
+ARG MAVEN_MIRROR=""
+RUN if [ -n "$MAVEN_MIRROR" ]; then \
+      mkdir -p /root/.m2 && \
+      printf '<settings><mirrors><mirror><id>mirror</id><mirrorOf>central</mirrorOf><url>%s</url></mirror></mirrors></settings>' "$MAVEN_MIRROR" \
+      > /usr/share/maven/conf/settings.xml; \
+    fi
+
+WORKDIR /src
+# 先只拷贝各模块 POM 预拉依赖，源码改动不触发依赖重新下载
+COPY pom.xml ./
+COPY backend/pom.xml backend/
+COPY backend/miskk-common/pom.xml backend/miskk-common/
+COPY backend/miskk-gateway/pom.xml backend/miskk-gateway/
+COPY backend/miskk-service-user/pom.xml backend/miskk-service-user/
+COPY backend/miskk-service-blog/pom.xml backend/miskk-service-blog/
+RUN --mount=type=cache,target=/root/.m2/repository \
+    mvn -B -ntp -pl ${MODULE} -am dependency:go-offline -DskipTests || true
+
+COPY backend/ backend/
+RUN --mount=type=cache,target=/root/.m2/repository \
+    mvn -B -ntp -pl ${MODULE} -am clean package -DskipTests
+
+FROM eclipse-temurin:17-jre
+ENV TZ=Asia/Shanghai LANG=C.UTF-8
+WORKDIR /app
+COPY --from=build /src/${MODULE}/target/*.jar app.jar
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

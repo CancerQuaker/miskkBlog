@@ -1,0 +1,18 @@
+# docker build 上下文 = 仓库根目录，排除与构建无关的内容
+.git
+.idea
+.vscode
+*.iml
+AGENTS.md
+logs
+*.log
+wallpapers
+tools
+.miskk
+.workbuddy
+.playwright-cli
+frontend/node_modules
+frontend/dist
+frontend/tsconfig.tsbuildinfo
+**/target
+docker/uploads
