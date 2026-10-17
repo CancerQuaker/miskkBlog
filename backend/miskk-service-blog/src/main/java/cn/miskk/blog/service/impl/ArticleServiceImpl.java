@@ -104,7 +104,8 @@ public class ArticleServiceImpl implements ArticleService {
             throw new BizException("文章不存在");
         }
         boolean admin = login != null && login.isAdmin();
-        boolean owner = login != null && login.getUserId().equals(article.getAuthorId());
+        boolean owner = login != null && login.getUserId() != null
+                && login.getUserId().equals(article.getAuthorId());
         if (article.getStatus() != 1 && !admin && !owner) {
             throw new BizException("文章不存在或未发布");
         }
