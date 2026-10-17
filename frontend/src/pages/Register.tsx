@@ -11,6 +11,7 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [nickname, setNickname] = useState('');
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
@@ -39,8 +40,12 @@ export default function Register() {
   };
 
   const doRegister = async () => {
-    if (!email || !code || !password) {
+    if (!email || !code || !password || !confirm) {
       message.warning('请填写完整信息');
+      return;
+    }
+    if (password !== confirm) {
+      message.warning('两次输入的密码不一致捏');
       return;
     }
     setLoading(true);
@@ -65,6 +70,14 @@ export default function Register() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Input
+            size="large"
+            prefix={<UserOutlined style={{ color: 'var(--text-faint)' }} />}
+            placeholder="昵称（选填，不填自动生成）"
+            maxLength={16}
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+          />
           <Input
             size="large"
             prefix={<MailOutlined style={{ color: 'var(--text-faint)' }} />}
@@ -92,13 +105,12 @@ export default function Register() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <Input
+          <Input.Password
             size="large"
-            prefix={<UserOutlined style={{ color: 'var(--text-faint)' }} />}
-            placeholder="昵称（选填）"
-            maxLength={16}
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
+            prefix={<LockOutlined style={{ color: 'var(--text-faint)' }} />}
+            placeholder="确认密码"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
           />
           <Button type="primary" size="large" loading={loading} onClick={doRegister} block>
             注册并登录
