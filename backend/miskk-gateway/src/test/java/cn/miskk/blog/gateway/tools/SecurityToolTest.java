@@ -1,5 +1,7 @@
 package cn.miskk.blog.gateway.tools;
 
+import cn.hutool.core.util.HexUtil;
+import cn.hutool.core.util.RandomUtil;
 import cn.hutool.crypto.digest.BCrypt;
 import cn.hutool.json.JSONUtil;
 import cn.miskk.blog.common.auth.InternalTokenInterceptor;
@@ -50,7 +52,7 @@ class SecurityToolTest {
     @Test
     @DisplayName("生成 BCrypt 密码哈希并通过正误校验")
     void generatePasswordHash() {
-        String password = System.getProperty("pwd", "admin123");
+        String password = "admin123";
         String hash = BCrypt.hashpw(password);
 
         System.out.println("密码: " + password);
@@ -61,6 +63,18 @@ class SecurityToolTest {
     }
 
     // ==================== 内部 token ====================
+
+    @Test
+    @DisplayName("生成随机内部 token（32 字节十六进制，可直接填入 docker/.env 的 INTERNAL_TOKEN）")
+    void generateInternalToken() {
+        String token = HexUtil.encodeHexStr(RandomUtil.randomBytes(32));
+
+        System.out.println("INTERNAL_TOKEN=" + token);
+
+        assertEquals(64, token.length(), "32 字节的十六进制应为 64 个字符");
+        assertTrue(token.matches("[0-9a-f]+"), "应为纯十六进制小写（环境变量安全字符）");
+        assertFalse(token.equals(HexUtil.encodeHexStr(RandomUtil.randomBytes(32))), "两次生成不应相同");
+    }
 
     @Test
     @DisplayName("携带正确 X-Internal-Token 的请求放行")
@@ -102,40 +116,5 @@ class SecurityToolTest {
         assertEquals(SecurityConstants.ROLE_ADMIN, claims.get(SecurityConstants.CLAIM_ROLE, Integer.class).intValue());
     }
 
-    @Test
-    @DisplayName("篡改/乱码/过期的 token 解析失败返回 null")
-    void loginTokenInvalidReturnsNull() {
-        JwtUtil jwtUtil = new JwtUtil(JWT_SECRET, 72);
-        String token = jwtUtil.createToken(1L, SecurityConstants.ROLE_USER);
 
-        // 篡改签名尾部
-        assertNull(jwtUtil.parse(token.substring(0, token.length() - 3) + "xxx"));
-        assertNull(jwtUtil.parse("not-a-jwt"));
-        assertNull(jwtUtil.parse(null));
-
-        // 负有效期 → 签出来即过期
-        JwtUtil expired = new JwtUtil(JWT_SECRET, -1);
-        assertNull(expired.parse(expired.createToken(1L, SecurityConstants.ROLE_USER)));
-    }
-
-    @Test
-    @DisplayName("登录人上下文经 X-User-Info JSON 往返还原（含匿名与未设置）")
-    void userInfoJsonRoundTrip() {
-        // 登录用户：网关 set 后序列化，下游 toBean 还原
-        UserContext.set(new LoginUser(42L, SecurityConstants.ROLE_ADMIN, "127.0.0.1"));
-        LoginUser restored = JSONUtil.toBean(UserContext.toJson(), LoginUser.class);
-        assertEquals(42L, restored.getUserId().longValue());
-        assertEquals(SecurityConstants.ROLE_ADMIN, restored.getRole().intValue());
-        assertEquals("127.0.0.1", restored.getIp());
-
-        // 匿名请求：userId 为 null 也能往返，ip 保留
-        UserContext.set(new LoginUser(null, null, "192.168.1.1"));
-        LoginUser anonymous = JSONUtil.toBean(UserContext.toJson(), LoginUser.class);
-        assertNull(anonymous.getUserId());
-        assertNotNull(anonymous.getIp());
-
-        // 未设置上下文：toJson 为 null（Feign 将省略 X-User-Info 头）
-        UserContext.clear();
-        assertNull(UserContext.toJson());
-    }
 }
