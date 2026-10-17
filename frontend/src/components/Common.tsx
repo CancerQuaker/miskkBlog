@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Avatar } from 'antd';
-import { EyeOutlined, LikeOutlined, MessageOutlined, ShareAltOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { EyeOutlined, LikeOutlined, MessageOutlined, ShareAltOutlined, ClockCircleOutlined, UserOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { ArticleCard as ArticleCardType } from '../api/article';
 import { UserCard } from '../api/auth';
@@ -9,9 +9,7 @@ import { CatLogo } from './Navbar';
 
 export function DefaultAvatar({ user, size = 36 }: { user?: Partial<UserCard> | null; size?: number }) {
   return (
-    <Avatar size={size} src={user?.avatar || '/chibi/furina.png'} style={{ background: 'var(--primary-weak)', flexShrink: 0 }}>
-      {user?.nickname?.[0] || '狐'}
-    </Avatar>
+    <Avatar size={size} src={user?.avatar} icon={<UserOutlined />} style={{ background: 'var(--primary-weak)', flexShrink: 0 }} />
   );
 }
 

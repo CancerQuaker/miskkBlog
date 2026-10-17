@@ -256,9 +256,7 @@ export default function Navbar() {
             }}
           >
             <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', gap: 6 }}>
-              <Avatar size={32} src={user.avatar || '/chibi/furina.png'} style={{ background: 'var(--primary-weak)' }}>
-                {user.nickname?.[0] || <UserOutlined />}
-              </Avatar>
+              <Avatar size={32} src={user.avatar} icon={<UserOutlined />} style={{ background: 'var(--primary-weak)' }} />
             </span>
           </Dropdown>
         ) : (

@@ -31,7 +31,8 @@ export default function Sidebar({
   return (
     <aside className="layout-sidebar">
       <div className="card sidebar-widget fade-in" style={{ textAlign: 'center' }}>
-        <Avatar size={84} src={shown?.avatar || '/chibi/furina.png'} icon={<UserOutlined />} style={{ background: 'var(--primary-weak)', fontSize: 30 }}>
+        {/* 匿名时展示站长（管理员）资料卡，用芙宁娜头像；登录用户显示自己的头像，无头像回退默认图标 */}
+        <Avatar size={84} src={shown ? shown.avatar : '/chibi/furina.png'} icon={<UserOutlined />} style={{ background: 'var(--primary-weak)', fontSize: 30 }}>
           {shown?.nickname?.[0]}
         </Avatar>
         <h3 style={{ margin: '12px 0 4px' }}>{shown?.nickname || '迷失客客'}</h3>
