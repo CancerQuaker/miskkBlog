@@ -125,7 +125,7 @@ bash deploy.sh          # 等价于 docker compose -f docker-compose.auto.yml up
 
 说明：
 
-- **本机已有构建产物**时（根目录 `mvn clean install -DskipTests` + `frontend` 下 `npm run build`），可改用同目录 `docker-compose.yml`：不做容器内编译，直接挂载 `backend/*/target/*.jar` 与 `frontend/dist` 启动同一套全栈（与 `.env` 通用；只想起基础设施时 `docker compose up -d mysql redis nacos`）。
+- **本机已有构建产物**时（根目录 `mvn clean install -DskipTests` + `frontend` 下 `npm run build`），可改用同目录 `docker-compose.yml`：不做容器内编译，直接挂载 `backend/*/target/*.jar` 与 `frontend/dist` 启动同一套全栈（路径可在 `.env` 用 `GATEWAY_JAR_DIR` / `FRONTEND_DIST_DIR` 等变量改指别处；与 `.env` 通用；只想起基础设施时 `docker compose up -d mysql redis nacos`）。
 - **安全模型**：默认只有 nginx 暴露 `SITE_PORT`（默认 80）端口，MySQL/Redis/Nacos/网关都在 compose 内部网络，云安全组只需放行 80/443。所有端口（宿主机侧与容器内侧，如 MySQL/Redis/Nginx）都可在 `.env` 自定义，MySQL/Redis/Nacos 的宿主机映射在 compose 里以注释预留。
 - **首次构建**约需几分钟（容器内编译）；国内服务器可在 `.env` 配 `MAVEN_MIRROR` / `NPM_REGISTRY` 镜像加速。
 - **数据备份**：`mysql-data` / `redis-data` 卷 + `docker/uploads/` 目录（上传图片）。

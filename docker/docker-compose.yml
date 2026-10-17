@@ -7,6 +7,9 @@
 #   mvn clean install -DskipTests     # 仓库根目录执行，生成 backend/*/target/*.jar
 #   cd frontend && npm run build      # 生成 frontend/dist
 #
+# 产物默认取各模块 target/ 与 frontend/dist，可在 .env 用 GATEWAY_JAR_DIR / USER_JAR_DIR /
+# BLOG_JAR_DIR / FRONTEND_DIST_DIR 改指任意目录（见 .env.example「本机产物路径」一节）。
+#
 # 用法：
 #   cp .env.example .env              # 必填 MYSQL_PASSWORD / JWT_SECRET / INTERNAL_TOKEN（与 auto 版通用）
 #   docker compose up -d              # 全栈一套启动：MySQL/Redis/Nacos/三后端/nginx
@@ -102,7 +105,7 @@ services:
       retries: 30
       start_period: 20s
 
-  # ---- 三个后端服务：挂载本机 mvn 构建出的 target 目录，通配符启动其中的可执行 jar ----
+  # ---- 三个后端服务：挂载本机 jar 目录（.env 可改指，默认各模块 target），通配符启动可执行 jar ----
   gateway:
     image: eclipse-temurin:17-jre
     container_name: miskk-gateway
@@ -113,11 +116,11 @@ services:
       # 优先级高于 application.yml 的 server.port
       SERVER_PORT: ${GATEWAY_PORT:-8100}
     volumes:
-      # target 下只有一个可执行 jar（repackage 产物；*.jar.original 不参与 *.jar 匹配），
-      # jar 文件名带版本号（如 miskk-gateway-1.0.0.jar），通配符启动免随版本改 compose
-      - ../backend/miskk-gateway/target:/app
+      # 目录内应只有一个可执行 jar；按模块名通配（*.jar.original 不参与匹配），
+      # 三个服务即使指向同一存放全部 jar 的目录也不会拿错
+      - ${GATEWAY_JAR_DIR:-../backend/miskk-gateway/target}:/app
     # glob 由 sh 展开，exec 后 java 成为容器主进程（信号可正常送达）
-    entrypoint: ["sh", "-c", "exec java -jar /app/*.jar"]
+    entrypoint: ["sh", "-c", "exec java -jar /app/*gateway*.jar"]
     depends_on:
       nacos:
         condition: service_healthy
@@ -130,9 +133,9 @@ services:
       <<: *backend-env
       UPLOAD_DIR: /data/uploads
     volumes:
-      - ../backend/miskk-service-user/target:/app
+      - ${USER_JAR_DIR:-../backend/miskk-service-user/target}:/app
       - ./uploads:/data/uploads
-    entrypoint: ["sh", "-c", "exec java -jar /app/*.jar"]
+    entrypoint: ["sh", "-c", "exec java -jar /app/*user*.jar"]
     depends_on:
       mysql:
         condition: service_healthy
@@ -149,9 +152,9 @@ services:
       <<: *backend-env
       UPLOAD_DIR: /data/uploads
     volumes:
-      - ../backend/miskk-service-blog/target:/app
+      - ${BLOG_JAR_DIR:-../backend/miskk-service-blog/target}:/app
       - ./uploads:/data/uploads
-    entrypoint: ["sh", "-c", "exec java -jar /app/*.jar"]
+    entrypoint: ["sh", "-c", "exec java -jar /app/*blog*.jar"]
     depends_on:
       mysql:
         condition: service_healthy
@@ -173,8 +176,8 @@ services:
     ports:
       - "${SITE_PORT:-80}:${NGINX_PORT:-80}"
     volumes:
-      # 本机 npm run build 产物 + 与 auto 版同一份 nginx.conf
-      - ../frontend/dist:/usr/share/nginx/html:ro
+      # 本机 npm run build 产物（.env 可改指）+ 与 auto 版同一份 nginx.conf
+      - ${FRONTEND_DIST_DIR:-../frontend/dist}:/usr/share/nginx/html:ro
       - ./nginx.conf:/etc/nginx/templates/default.conf.template:ro
     depends_on:
       - gateway
