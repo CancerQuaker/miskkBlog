@@ -36,3 +36,19 @@ INSERT INTO `t_user` (`username`, `password`, `nickname`, `email`, `bio`, `role`
 VALUES ('admin', '$2a$10$XPg5sck5VLn2EB0mcKIHt.zTyRZJihfTvLVbM6nt8a/wlzb7.F4GC', '迷失客客', 'admin@miskk.cn',
         '一只喜欢写代码的二次元猫咪喵~', 1, 0)
 ON DUPLICATE KEY UPDATE `username` = `username`;
+
+-- 演示用户种子：密码统一 admin123（复用管理员 BCrypt 哈希，见 sql/README 说明）。
+-- id 从 11 起，避开线上可能已注册的真实用户（AUTO_INCREMENT 自然增长区）；
+-- miskk_article.t_comment 的种子评论引用这些 id
+INSERT INTO `t_user` (`id`, `username`, `password`, `nickname`, `email`, `bio`, `role`, `status`, `last_login_at`, `created_at`)
+VALUES (11, 'xiaoxing', '$2a$10$XPg5sck5VLn2EB0mcKIHt.zTyRZJihfTvLVbM6nt8a/wlzb7.F4GC', '小星尘', 'xiaoxing@miskk.cn',
+        '星星光标中毒用户，左键星爆根本停不下来', 0, 0, NOW() - INTERVAL 1 DAY, NOW() - INTERVAL 62 DAY),
+       (12, 'paimon', '$2a$10$XPg5sck5VLn2EB0mcKIHt.zTyRZJihfTvLVbM6nt8a/wlzb7.F4GC', '应急食品派蒙', 'paimon@miskk.cn',
+        '才不是应急食品！是最好的伙伴！', 0, 0, NOW() - INTERVAL 2 DAY, NOW() - INTERVAL 55 DAY),
+       (13, 'stelle', '$2a$10$XPg5sck5VLn2EB0mcKIHt.zTyRZJihfTvLVbM6nt8a/wlzb7.F4GC', '三月七', 'stelle@miskk.cn',
+        '这次探险一定要载入史册！', 0, 0, NOW() - INTERVAL 3 DAY, NOW() - INTERVAL 48 DAY),
+       (14, 'funina', '$2a$10$XPg5sck5VLn2EB0mcKIHt.zTyRZJihfTvLVbM6nt8a/wlzb7.F4GC', '芙宁娜', 'funina@miskk.cn',
+        '哼哼，本大人只是路过点评一下', 0, 0, NOW() - INTERVAL 1 DAY, NOW() - INTERVAL 36 DAY),
+       (15, 'yinlang', '$2a$10$XPg5sck5VLn2EB0mcKIHt.zTyRZJihfTvLVbM6nt8a/wlzb7.F4GC', '银狼', 'yinlang@miskk.cn',
+        '随便逛逛，别在意', 0, 0, NOW() - INTERVAL 5 DAY, NOW() - INTERVAL 21 DAY)
+ON DUPLICATE KEY UPDATE `username` = `username`;
