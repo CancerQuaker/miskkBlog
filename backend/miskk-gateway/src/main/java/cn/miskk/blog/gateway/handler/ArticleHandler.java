@@ -2,7 +2,6 @@ package cn.miskk.blog.gateway.handler;
 
 import cn.miskk.blog.common.api.PageVO;
 import cn.miskk.blog.common.api.Result;
-import cn.miskk.blog.common.auth.LoginUser;
 import cn.miskk.blog.common.auth.UserContext;
 import cn.miskk.blog.common.dto.ArticleSaveDTO;
 import cn.miskk.blog.common.dto.ArticleStatusDTO;
@@ -26,8 +25,8 @@ import java.util.List;
 
 /**
  * 文章请求处理：把前端原有的 GET query / PUT / DELETE 请求翻译为下游 POST + 共享 DTO；
- * 用户上下文（userId/role，浏览与观看另含客户端 ip）以参数形式显式下发，
- * 匿名请求 userId 为 null，Feign 会省略对应请求头。
+ * 用户上下文以单个 X-User-Info 请求头（LoginUser JSON）下发，
+ * 匿名请求 userId 为 null，由下游 AuthInterceptor 还原为 UserContext。
  */
 @Component
 @RequiredArgsConstructor
@@ -39,14 +38,12 @@ public class ArticleHandler {
 
     /** 文章分页列表：GET query → PageQueryDTO（登录管理员可见草稿/隐藏） */
     public Result<PageVO<ArticleCardVO>> page(long page, long size, Long categoryId, Long tagId, String keyword) {
-        LoginUser user = UserContext.get();
-        return blogRemoteService.articles(user.getUserId(), user.getRole(),
+        return blogRemoteService.articles(UserContext.toJson(),
                 toQuery(page, size, categoryId, tagId, keyword, null));
     }
 
     public Result<ArticleDetailVO> detail(Long id) {
-        LoginUser user = UserContext.get();
-        return blogRemoteService.article(user.getUserId(), user.getRole(), toId(id));
+        return blogRemoteService.article(UserContext.toJson(), toId(id));
     }
 
     /** 全文搜索：GET query → PageQueryDTO（仅 keyword/page/size 有效） */
@@ -60,33 +57,28 @@ public class ArticleHandler {
 
     // ==================== 互动 ====================
 
-    /** 上报浏览：ip 供下游"按访客按天去重"，登录用户优先按 userId 去重 */
+    /** 上报浏览：ip 已含在 X-User-Info 中，供下游"按访客按天去重"，登录用户优先按 userId 去重 */
     public Result<Boolean> view(Long id) {
-        LoginUser user = UserContext.get();
-        return blogRemoteService.view(user.getUserId(), user.getRole(), user.getIp(), toId(id));
+        return blogRemoteService.view(UserContext.toJson(), toId(id));
     }
 
     public Result<Boolean> like(Long id) {
-        LoginUser user = UserContext.get();
-        return blogRemoteService.like(user.getUserId(), user.getRole(), toId(id));
+        return blogRemoteService.like(UserContext.toJson(), toId(id));
     }
 
     public Result<Boolean> unlike(Long id) {
-        LoginUser user = UserContext.get();
-        return blogRemoteService.unlike(user.getUserId(), user.getRole(), toId(id));
+        return blogRemoteService.unlike(UserContext.toJson(), toId(id));
     }
 
     public Result<Void> share(Long id, ShareDTO dto) {
-        LoginUser user = UserContext.get();
         dto.setArticleId(id);
-        return blogRemoteService.share(user.getUserId(), user.getRole(), dto);
+        return blogRemoteService.share(UserContext.toJson(), dto);
     }
 
-    /** 上报观看时长：ip 供下游"按访客+日期"聚合 */
+    /** 上报观看时长：ip 已含在 X-User-Info 中，供下游"按访客+日期"聚合 */
     public Result<Void> watch(Long id, WatchDTO dto) {
-        LoginUser user = UserContext.get();
         dto.setArticleId(id);
-        return blogRemoteService.watch(user.getUserId(), user.getRole(), user.getIp(), dto);
+        return blogRemoteService.watch(UserContext.toJson(), dto);
     }
 
     // ==================== 评论 ====================
@@ -101,13 +93,11 @@ public class ArticleHandler {
     }
 
     public Result<CommentVO> createComment(CommentCreateDTO dto) {
-        LoginUser user = UserContext.get();
-        return blogRemoteService.createComment(user.getUserId(), user.getRole(), dto);
+        return blogRemoteService.createComment(UserContext.toJson(), dto);
     }
 
     public Result<Void> deleteComment(Long id) {
-        LoginUser user = UserContext.get();
-        return blogRemoteService.deleteComment(user.getUserId(), user.getRole(), toId(id));
+        return blogRemoteService.deleteComment(UserContext.toJson(), toId(id));
     }
 
     // ==================== 分类 / 标签 ====================
@@ -121,38 +111,32 @@ public class ArticleHandler {
     }
 
     public Result<String> uploadImage(MultipartFile file) {
-        LoginUser user = UserContext.get();
-        return blogRemoteService.uploadImage(user.getUserId(), user.getRole(), file);
+        return blogRemoteService.uploadImage(UserContext.toJson(), file);
     }
 
     // ==================== 管理端：文章 ====================
 
     public Result<PageVO<ArticleCardVO>> adminPage(long page, long size, Long categoryId, Long tagId, String keyword) {
-        LoginUser user = UserContext.get();
-        return blogRemoteService.adminArticles(user.getUserId(), user.getRole(),
+        return blogRemoteService.adminArticles(UserContext.toJson(),
                 toQuery(page, size, categoryId, tagId, keyword, null));
     }
 
     public Result<ArticleDetailVO> createArticle(ArticleSaveDTO dto) {
-        LoginUser user = UserContext.get();
-        return blogRemoteService.createArticle(user.getUserId(), user.getRole(), dto);
+        return blogRemoteService.createArticle(UserContext.toJson(), dto);
     }
 
     public Result<ArticleDetailVO> updateArticle(Long id, ArticleSaveDTO dto) {
-        LoginUser user = UserContext.get();
         dto.setId(id);
-        return blogRemoteService.updateArticle(user.getUserId(), user.getRole(), dto);
+        return blogRemoteService.updateArticle(UserContext.toJson(), dto);
     }
 
     public Result<Void> deleteArticle(Long id) {
-        LoginUser user = UserContext.get();
-        return blogRemoteService.deleteArticle(user.getUserId(), user.getRole(), toId(id));
+        return blogRemoteService.deleteArticle(UserContext.toJson(), toId(id));
     }
 
     public Result<Void> updateArticleStatus(Long id, ArticleStatusDTO dto) {
-        LoginUser user = UserContext.get();
         dto.setId(id);
-        return blogRemoteService.updateArticleStatus(user.getUserId(), user.getRole(), dto);
+        return blogRemoteService.updateArticleStatus(UserContext.toJson(), dto);
     }
 
     /** 单 ID → IdDTO（服务间 POST 不使用路径参数） */

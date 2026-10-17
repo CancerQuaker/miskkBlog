@@ -161,7 +161,7 @@ bash deploy.sh          # 等价于 docker compose -f docker-compose.prod.yml up
 
 设计要点：
 
-- **网关统一鉴权**：JWT 在网关解析，用户身份通过 `X-User-Id / X-User-Role` 请求头下发；下游服务通过拦截器还原 ThreadLocal 并校验 `@RequireLogin / @RequireAdmin`。
+- **网关统一鉴权**：JWT 在网关解析，用户身份通过 `X-User-Info` 请求头（LoginUser 序列化 JSON：userId/role/ip）下发；下游服务通过拦截器还原 ThreadLocal 并校验 `@RequireLogin / @RequireAdmin`。
 - **内部接口保护**：`/internal/**` 只接受带 `X-Internal-Token` 的 Feign 调用。
 - **浏览量削峰**：浏览经 Redis `SADD` 按访客按天去重 + Hash 缓冲增量，博客服务每 30 秒批量落库。
 - **在线观看时长**：前端每 20 秒心跳上报（页面可见时），离开页面用 `sendBeacon` 兜底；按访客+日期聚合。

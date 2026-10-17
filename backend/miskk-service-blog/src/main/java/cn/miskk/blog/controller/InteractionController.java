@@ -7,6 +7,7 @@ import cn.miskk.blog.service.ArticleService;
 import cn.miskk.blog.service.InteractionService;
 import cn.miskk.blog.service.LikeService;
 import cn.miskk.blog.common.api.Result;
+import cn.miskk.blog.common.auth.LoginUser;
 import cn.miskk.blog.common.auth.RequireLogin;
 import cn.miskk.blog.common.auth.UserContext;
 import io.swagger.v3.oas.annotations.Operation;
@@ -75,17 +76,14 @@ public class InteractionController {
         return Result.ok();
     }
 
+    /** 访客标识：登录用户优先按 userId；匿名用网关解析的客户端 ip（X-User-Info 还原），上下文缺失时退回直连地址 */
     private String visitorIdentity(HttpServletRequest request) {
-        Long userId = UserContext.get() == null ? null : UserContext.getUserId();
-        if (userId != null) {
-            return "u:" + userId;
+        LoginUser user = UserContext.get();
+        if (user != null && user.getUserId() != null) {
+            return "u:" + user.getUserId();
         }
-        String ip = request.getHeader("X-Forwarded-For");
-        if (!StringUtils.hasText(ip) || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
-        } else {
-            ip = ip.split(",")[0].trim();
-        }
+        String ip = user == null || !StringUtils.hasText(user.getIp())
+                ? request.getRemoteAddr() : user.getIp();
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256")
                     .digest((ip + "|miskk-salt").getBytes(StandardCharsets.UTF_8));

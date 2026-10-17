@@ -1,7 +1,6 @@
 package cn.miskk.blog.gateway.handler;
 
 import cn.miskk.blog.common.api.Result;
-import cn.miskk.blog.common.auth.LoginUser;
 import cn.miskk.blog.common.auth.UserContext;
 import cn.miskk.blog.common.dto.IdDTO;
 import cn.miskk.blog.common.dto.UpdatePasswordDTO;
@@ -13,7 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * 用户资料请求处理：从 UserContext 取出用户上下文，以参数形式显式下发。
+ * 用户资料请求处理：用户上下文以单个 X-User-Info 请求头（LoginUser JSON）下发。
  */
 @Component
 @RequiredArgsConstructor
@@ -22,18 +21,15 @@ public class UserHandler {
     private final UserRemoteService userRemoteService;
 
     public Result<UserVO> me() {
-        LoginUser user = UserContext.get();
-        return userRemoteService.myProfile(user.getUserId(), user.getRole());
+        return userRemoteService.myProfile(UserContext.toJson());
     }
 
     public Result<UserVO> updateProfile(UpdateProfileDTO dto) {
-        LoginUser user = UserContext.get();
-        return userRemoteService.updateProfile(user.getUserId(), user.getRole(), dto);
+        return userRemoteService.updateProfile(UserContext.toJson(), dto);
     }
 
     public Result<Void> updatePassword(UpdatePasswordDTO dto) {
-        LoginUser user = UserContext.get();
-        return userRemoteService.updatePassword(user.getUserId(), user.getRole(), dto);
+        return userRemoteService.updatePassword(UserContext.toJson(), dto);
     }
 
     public Result<UserVO> user(Long id) {
@@ -43,7 +39,6 @@ public class UserHandler {
     }
 
     public Result<String> uploadImage(MultipartFile file) {
-        LoginUser user = UserContext.get();
-        return userRemoteService.uploadImage(user.getUserId(), user.getRole(), file);
+        return userRemoteService.uploadImage(UserContext.toJson(), file);
     }
 }

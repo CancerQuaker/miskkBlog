@@ -1,7 +1,6 @@
 package cn.miskk.blog.gateway.handler;
 
 import cn.miskk.blog.common.api.Result;
-import cn.miskk.blog.common.auth.LoginUser;
 import cn.miskk.blog.common.auth.UserContext;
 import cn.miskk.blog.common.dto.EmailCodeDTO;
 import cn.miskk.blog.common.dto.GithubLoginDTO;
@@ -48,7 +47,6 @@ public class AuthHandler {
     }
 
     public Result<UserVO> me() {
-        LoginUser user = UserContext.get();
-        return userRemoteService.me(user.getUserId(), user.getRole());
+        return userRemoteService.me(UserContext.toJson());
     }
 }

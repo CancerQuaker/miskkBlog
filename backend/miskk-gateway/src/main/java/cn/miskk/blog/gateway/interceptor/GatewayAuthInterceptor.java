@@ -19,7 +19,8 @@ import java.util.List;
 
 /**
  * 网关统一鉴权拦截器（原响应式 AuthGlobalFilter 的 MVC 版本）：
- * 1. 解析 Authorization 中的 JWT，校验通过则写入 UserContext，并由 Feign 头传播向下游注入 X-User-Id / X-User-Role；
+ * 1. 解析 Authorization 中的 JWT，校验通过则写入 UserContext；Feign 调用时由 UserContext.toJson()
+ *    以单个 X-User-Info 请求头（LoginUser JSON：userId/role/ip）向下游下发用户上下文；
  * 2. 非白名单请求必须携带有效 JWT，否则返回 401；
  * 3. /api/admin/** 仅允许管理员（role=1）访问；
  * 4. 白名单内请求若携带有效 JWT 依然注入用户信息（匿名可浏览、登录有身份）。
@@ -97,7 +98,7 @@ public class GatewayAuthInterceptor implements HandlerInterceptor {
         }
 
         // 网关统一填充用户上下文（含匿名请求）：userId 为空表示未登录，
-        // ip 供浏览量/观看时长按访客去重；后续 Feign 调用以参数形式显式下发这些字段
+        // ip 供浏览量/观看时长按访客去重；Feign 调用时经 UserContext.toJson() 序列化为 X-User-Info 下发
         Long uid = null;
         Integer role = 0;
         if (claims != null) {

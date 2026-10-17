@@ -8,7 +8,7 @@ import org.springframework.web.client.RestTemplate;
 /**
  * 网关 HTTP 配置：仅提供静态资源转发所需的负载均衡 RestTemplate。
  * <p>
- * Feign 调用的用户上下文（X-User-Id / X-User-Role / X-Forwarded-For）
+ * Feign 调用的用户上下文（X-User-Info，LoginUser JSON）
  * 由各 FeignClient 接口以 @RequestHeader 参数形式显式传递，无需额外配置。
  */
 @Configuration

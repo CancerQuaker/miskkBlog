@@ -32,7 +32,7 @@ Vite dev server 长时间运行后偶发吐出新旧混杂的模块代码（文�
 ## 架构规则（改动前必读）
 
 - **API 风格分两层**：blog/user 服务对外接口**全部 POST + JSON 请求体**；网关是 Spring MVC 风格（controller → handler → FeignClient 转发），对前端保持原 GET/PUT/DELETE 风格。加接口时两层都要写。
-- **鉴权**：JWT 只在网关解析，身份经 `X-User-Id / X-User-Role` 请求头下发，下游用拦截器还原 ThreadLocal 并校验 `@RequireLogin / @RequireAdmin`（注解在 miskk-common）。
+- **鉴权**：JWT 只在网关解析，身份以单个 `X-User-Info` 请求头（LoginUser 序列化 JSON：userId/role/ip，网关侧 `UserContext.toJson()` 生成）经 Feign 下发，下游用拦截器还原 ThreadLocal 并校验 `@RequireLogin / @RequireAdmin`（注解在 miskk-common）。
 - **内部接口**：`/internal/**` 只接受带 `X-Internal-Token` 的调用；Feign 服务间直连（不走网关），公共头已封装在 miskk-common 的 Feign 配置里。
 - **双数据源**：博客服务 miskk_article 为主库，friend 库用 `@DS("friend")` 路由，友链事务也绑定 friend 连接。
 - **浏览量/时长**：Redis 削峰（SADD 按访客按天去重 + Hash 缓冲，30 秒批量落库）；前端每 20 秒心跳 + sendBeacon 兜底。改动文章/时长逻辑时注意这条异步链路。

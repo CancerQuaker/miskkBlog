@@ -31,14 +31,16 @@ public class AuthInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        String userId = request.getHeader(SecurityConstants.HEADER_USER_ID);
-        if (userId != null && !userId.isBlank()) {
+        String userInfo = request.getHeader(SecurityConstants.HEADER_USER_INFO);
+        if (userInfo != null && !userInfo.isBlank()) {
             try {
-                int role = Integer.parseInt(request.getHeader(SecurityConstants.HEADER_USER_ROLE) == null
-                        ? "0" : request.getHeader(SecurityConstants.HEADER_USER_ROLE));
-                UserContext.set(new LoginUser(Long.parseLong(userId), role));
-            } catch (NumberFormatException e) {
-                log.warn("非法的用户请求头: userId={}", userId);
+                LoginUser user = JSONUtil.toBean(userInfo, LoginUser.class);
+                if (user.getRole() == null) {
+                    user.setRole(SecurityConstants.ROLE_USER);
+                }
+                UserContext.set(user);
+            } catch (Exception e) {
+                log.warn("非法的用户上下文请求头 X-User-Info: {}", userInfo);
             }
         }
 

@@ -8,9 +8,8 @@ public final class SecurityConstants {
     private SecurityConstants() {
     }
 
-    /** 网关解析 JWT 后向下游传递的用户请求头 */
-    public static final String HEADER_USER_ID = "X-User-Id";
-    public static final String HEADER_USER_ROLE = "X-User-Role";
+    /** 网关解析 JWT 后向下游下发的用户上下文请求头（LoginUser 序列化的 JSON：userId/role/ip） */
+    public static final String HEADER_USER_INFO = "X-User-Info";
 
     /** 服务间内部调用鉴权请求头 */
     public static final String HEADER_INTERNAL_TOKEN = "X-Internal-Token";

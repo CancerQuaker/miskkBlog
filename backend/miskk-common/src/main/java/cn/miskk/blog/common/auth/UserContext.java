@@ -1,5 +1,7 @@
 package cn.miskk.blog.common.auth;
 
+import cn.hutool.json.JSONUtil;
+
 /**
  * 基于 ThreadLocal 的当前用户上下文。
  */
@@ -24,6 +26,15 @@ public final class UserContext {
     public static Long getUserId() {
         LoginUser user = HOLDER.get();
         return user == null ? null : user.getUserId();
+    }
+
+    /**
+     * 当前上下文序列化为 X-User-Info 请求头值，供网关 Feign 调用下发；
+     * 未设置上下文时返回 null，Feign 将省略该请求头（下游视为匿名）。
+     */
+    public static String toJson() {
+        LoginUser user = HOLDER.get();
+        return user == null ? null : JSONUtil.toJsonStr(user);
     }
 
     public static void clear() {
