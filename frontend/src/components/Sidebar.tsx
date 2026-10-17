@@ -9,35 +9,26 @@ import {
   FileTextOutlined,
 } from '@ant-design/icons';
 import { CategoryVO, TagVO } from '../api/article';
-import { UserVO } from '../api/auth';
 import { DefaultAvatar } from './Common';
 import { ChibiImage } from './Chibi';
-import { useAuthStore } from '../stores/authStore';
-import { siteConfig } from '../config/site';
+import { aboutConfig, siteConfig } from '../config/site';
 
 /** 左侧资料卡 + 分类标签 */
 export default function Sidebar({
-  profile,
   categories,
   tags,
 }: {
-  profile?: UserVO | null;
   categories?: CategoryVO[];
   tags?: TagVO[];
 }) {
-  const { user } = useAuthStore();
-  const shown = profile || user;
-
   return (
     <aside className="layout-sidebar">
       <div className="card sidebar-widget fade-in" style={{ textAlign: 'center' }}>
-        {/* 匿名时展示站长（管理员）资料卡，用芙宁娜头像；登录用户显示自己的头像，无头像回退默认图标 */}
-        <Avatar size={84} src={shown ? shown.avatar : '/chibi/furina.png'} icon={<UserOutlined />} style={{ background: 'var(--primary-weak)', fontSize: 30 }}>
-          {shown?.nickname?.[0]}
-        </Avatar>
-        <h3 style={{ margin: '12px 0 4px' }}>{shown?.nickname || '迷失客客'}</h3>
+        {/* 站长名片：固定显示站长的芙宁娜头像与资料，不随登录用户变化 */}
+        <Avatar size={84} src="/chibi/furina.png" icon={<UserOutlined />} style={{ background: 'var(--primary-weak)', fontSize: 30 }} />
+        <h3 style={{ margin: '12px 0 4px' }}>{aboutConfig.author.name}</h3>
         <p style={{ color: 'var(--text-sub)', fontSize: 13, margin: 0 }}>
-          {shown?.bio || '一只喜欢写代码的小狐狸捏~'}
+          一只喜欢写代码的小狐狸捏~
         </p>
         <Link
           to="/links"
