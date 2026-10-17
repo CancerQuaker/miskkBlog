@@ -44,7 +44,7 @@ export default function Login() {
   return (
     <div className="page-container" style={{ maxWidth: 460, paddingTop: 60, position: 'relative' }}>
       <ChibiImage
-        name="paimon"
+        name="klee"
         size={92}
         style={{ position: 'absolute', top: -6, right: 18, zIndex: 2, animation: 'heroFloat 3.4s ease-in-out infinite', filter: 'drop-shadow(0 6px 14px rgba(0,0,0,.14))' }}
       />
