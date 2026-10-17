@@ -31,9 +31,6 @@ wallpapers/
 # 本地工具类，不入库
 tools/
 
-# 本机开发环境说明（含密码/代理等敏感信息），不入库
-AGENTS.md
-
 # OS
 .DS_Store
 Thumbs.db

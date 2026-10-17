@@ -10,9 +10,9 @@ export default defineConfig({
     // 允许局域网 IP 与 Cloudflare 快速隧道域名访问
     allowedHosts: ['.trycloudflare.com'],
     proxy: {
-      // 全部请求走网关（8080），网关再按 /api/xxx 分发到各微服务
+      // 全部请求走网关（8100），网关再按 /api/xxx 分发到各微服务
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8100',
         changeOrigin: true,
       },
     },

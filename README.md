@@ -13,7 +13,7 @@ miskkBlog/
 ├── pom.xml                     # Maven 父 POM（仓库根目录，IDEA 直接打开根目录即可导入）
 ├── backend/                    # 后端（Maven 多模块微服务）
 │   ├── miskk-common/           # 公共模块：Result/JWT/拦截器/公共配置
-│   ├── miskk-gateway/          # 网关 :8080 —— 统一入口（controller → handler → FeignClient 转发）、JWT 全局鉴权、CORS
+│   ├── miskk-gateway/          # 网关 :8100 —— 统一入口（controller → handler → FeignClient 转发）、JWT 全局鉴权、CORS
 │   ├── miskk-service-user/     # 用户服务 :8101 —— 注册登录/OAuth/资料/头像上传
 │   └── miskk-service-blog/     # 博客服务 :8102 —— 文章/分类/标签/评论/点赞/浏览/分享/时长 + 友链 + 管理端（统计聚合/系统监控，双数据源）
 ├── frontend/                   # 前端（Vite 6 + React 18 + TS + AntD 5）
@@ -83,7 +83,7 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-Vite 开发服务器把 `/api` 代理到网关 `http://localhost:8080`。
+Vite 开发服务器把 `/api` 代理到网关 `http://localhost:8100`。
 
 ### 5. 默认账号
 
@@ -140,7 +140,7 @@ bash deploy.sh          # 等价于 docker compose -f docker-compose.prod.yml up
 
 ```
                     ┌─────────────────┐
-   浏览器 ──────────▶│  miskk-gateway  │ :8080
+   浏览器 ──────────▶│  miskk-gateway  │ :8100
    (Vite/静态资源)   │ JWT 鉴权拦截器   │
                     │ controller → handler → FeignClient(全 POST)
                     └───────┬─────────┘
