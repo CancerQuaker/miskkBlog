@@ -43,6 +43,7 @@ Vite dev server 长时间运行后偶发吐出新旧混杂的模块代码（文�
 
 
 ## 编码约定
+- **Git 流程**：修改的代码先本地提交（每完成一个任务即 commit）；勿 push，推送远程需用户明确要求。
 - Java 17 目标；Lombok 注解处理器已在父 POM 的 maven-compiler-plugin 显式配置（`proc: full`），JDK 23+ 必须保留。
 - 前端 TypeScript 严格模式，提交前跑 `npm run build` 验证类型。
 - 文档与注释使用中文。
