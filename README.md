@@ -68,10 +68,11 @@ MySQL 跑在 Docker 容器里时（两个 compose 文件的容器名都是 `misk
 
 ```bash
 # 方式一：宿主机把脚本重定向进容器（docker 目录下执行，../sql 相对当前目录；密码直接跟在 -p 后）
+# --default-character-set 必须带：容器内客户端 locale 为 C，不指定会回退 latin1，中文按双重编码落库成乱码
 cd docker
-docker exec -i miskk-mysql mysql -uroot -p'你的MYSQL_PASSWORD' < ../sql/01_miskk_user.sql
-docker exec -i miskk-mysql mysql -uroot -p'你的MYSQL_PASSWORD' < ../sql/02_miskk_article.sql
-docker exec -i miskk-mysql mysql -uroot -p'你的MYSQL_PASSWORD' < ../sql/03_miskk_friend.sql
+docker exec -i miskk-mysql mysql -uroot -p'你的MYSQL_PASSWORD' --default-character-set=utf8mb4 < ../sql/01_miskk_user.sql
+docker exec -i miskk-mysql mysql -uroot -p'你的MYSQL_PASSWORD' --default-character-set=utf8mb4 < ../sql/02_miskk_article.sql
+docker exec -i miskk-mysql mysql -uroot -p'你的MYSQL_PASSWORD' --default-character-set=utf8mb4 < ../sql/03_miskk_friend.sql
 
 # 方式二：进容器执行——sql/ 已由 compose 挂载为 /docker-entrypoint-initdb.d，不依赖宿主机目录位置
 docker exec -it miskk-mysql sh
@@ -84,7 +85,7 @@ exit
 docker exec -it miskk-mysql mysql -uroot -p -e "SHOW DATABASES;"
 ```
 
-> 容器首次启动（数据卷为空）会自动执行 `sql/` 三个脚本，无需手动。但 `/docker-entrypoint-initdb.d` **只在数据卷为空时执行一次**：若 MySQL 容器曾用旧数据卷启动过（比如换 compose 文件前用过别的方式起过 MySQL）、或初始化中途失败需要重跑，就用上面的命令手动执行。脚本全部使用 `CREATE DATABASE/TABLE IF NOT EXISTS`，重复执行安全。
+> 容器首次启动（数据卷为空）会自动执行 `sql/` 三个脚本，无需手动。但 `/docker-entrypoint-initdb.d` **只在数据卷为空时执行一次**：若 MySQL 容器曾用旧数据卷启动过（比如换 compose 文件前用过别的方式起过 MySQL）、或初始化中途失败需要重跑，就用上面的命令手动执行。脚本全部使用 `CREATE DATABASE/TABLE IF NOT EXISTS`，重复执行安全。三个脚本首行均带 `SET NAMES utf8mb4;`，因此首次启动自动导入（entrypoint 同样经由容器内客户端执行）与进容器手动执行也不会乱码。
 
 ### 3. 启动后端
 

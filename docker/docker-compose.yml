@@ -124,6 +124,8 @@ services:
     depends_on:
       nacos:
         condition: service_healthy
+    ports:
+      - "127.0.0.1:8100:${GATEWAY_PORT:-8100}"
 
   user:
     image: eclipse-temurin:17-jre

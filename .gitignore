@@ -1,6 +1,7 @@
 # dependencies / build output
 frontend/node_modules/
 frontend/dist/
+frontend/dist.zip
 frontend/tsconfig.tsbuildinfo
 target/
 *.class

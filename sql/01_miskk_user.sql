@@ -1,6 +1,10 @@
 -- ============================================================
 -- 迷失客客の博客 - 用户库
 -- ============================================================
+-- 声明连接字符集：MySQL 容器内客户端 locale 为 C 时会回退 latin1，
+-- 中文种子数据会被按 latin1 双重编码落库成乱码，SET NAMES 对已是
+-- utf8mb4 的连接（Navicat/IDEA 等）无副作用
+SET NAMES utf8mb4;
 CREATE DATABASE IF NOT EXISTS `miskk_user` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `miskk_user`;
 
