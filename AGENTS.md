@@ -23,9 +23,13 @@ mvn -pl backend/miskk-service-blog spring-boot:run
 # 前端
 cd frontend && npm run dev        # http://localhost:5173
 npm run build                     # tsc -b && vite build，类型检查也走这里
+
+# 单元测试（gateway，工具型：密码哈希/内部 token/登录 token）
+mvn -pl backend/miskk-gateway test
+mvn -pl backend/miskk-gateway test -Dtest=PasswordHashTest -Dpwd=新密码   # 生成 BCrypt 哈希（写入 SQL 种子）
 ```
 
-无测试套件，构建命令均带 `-DskipTests`。
+gateway 之外暂无测试；整包构建仍带 `-DskipTests`。
 
 Vite dev server 长时间运行后偶发吐出新旧混杂的模块代码（文件明明改了、页面仍跑旧逻辑，刷新无效，`curl` 模块内容可证实）：杀掉 5173 进程重启 `npm run dev` 即可，不必排查代码。
 

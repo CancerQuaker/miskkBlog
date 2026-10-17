@@ -28,9 +28,6 @@ wallpapers/
 .workbuddy/
 .playwright-cli/
 
-# 本地工具类，不入库
-tools/
-
 # OS
 .DS_Store
 Thumbs.db
