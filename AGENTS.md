@@ -25,7 +25,8 @@ cd frontend && npm run dev        # http://localhost:5173
 npm run build                     # tsc -b && vite build，类型检查也走这里；产物在 frontend/dist/
 
 # 前端打包并压缩（产物 dist.zip 约 6-7 MB，解压后为 dist/ 目录，供部署分发）
-cd frontend && npm run build && powershell -Command "Compress-Archive -Path dist -DestinationPath dist.zip -Force"
+# 必须用系统自带 bsdtar；PowerShell Compress-Archive 写反斜杠路径分隔符，Linux unzip 解压会得到带 '\' 的坏文件名
+cd frontend && npm run build && /c/Windows/System32/tar.exe -a -cf dist.zip dist
 
 # 单元测试（gateway，工具型：密码哈希/内部 token/登录 token）
 mvn -pl backend/miskk-gateway test
