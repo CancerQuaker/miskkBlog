@@ -12,6 +12,8 @@ RUN npm run build
 
 FROM nginx:alpine
 ENV TZ=Asia/Shanghai
-COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+# 经 template 机制渲染：容器启动时用环境变量替换 NGINX_PORT / GATEWAY_PORT
+# （生成 /etc/nginx/conf.d/default.conf，未定义时为 .env/compose 默认值）
+COPY docker/nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /src/dist /usr/share/nginx/html
-EXPOSE 80
+# 实际监听端口运行时由 NGINX_PORT 决定（默认 80），EXPOSE 仅作声明故省略

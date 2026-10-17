@@ -123,7 +123,7 @@ bash deploy.sh          # 等价于 docker compose -f docker-compose.prod.yml up
 
 说明：
 
-- **安全模型**：默认只有 nginx 暴露 `SITE_PORT`（默认 80）端口，MySQL/Redis/Nacos/网关都在 compose 内部网络，云安全组只需放行 80/443；MySQL/Nacos 如需宿主机访问，compose 里预留了注释掉的 ports 映射。
+- **安全模型**：默认只有 nginx 暴露 `SITE_PORT`（默认 80）端口，MySQL/Redis/Nacos/网关都在 compose 内部网络，云安全组只需放行 80/443。所有端口（宿主机侧与容器内侧，如 MySQL/Redis/Nginx）都可在 `.env` 自定义，MySQL/Redis/Nacos 的宿主机映射在 compose 里以注释预留。
 - **首次构建**约需几分钟（容器内编译）；国内服务器可在 `.env` 配 `MAVEN_MIRROR` / `NPM_REGISTRY` 镜像加速。
 - **数据备份**：`mysql-data` / `redis-data` 卷 + `docker/uploads/` 目录（上传图片）。
 - **HTTPS**：宿主机再加一层 Caddy / certbot 终止证书，反代到 80 即可。
