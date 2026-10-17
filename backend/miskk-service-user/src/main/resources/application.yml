@@ -44,9 +44,6 @@ miskk:
   upload:
     dir: ${UPLOAD_DIR:${user.home}/.miskk/uploads}
     url-prefix: /api/static/user
-  jwt:
-    secret: ${JWT_SECRET:miskk-blog-jwt-secret-key-please-change-me-in-production-0001}
-    expire-hours: 72
 
 mybatis-plus:
   configuration:

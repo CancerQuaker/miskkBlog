@@ -15,7 +15,7 @@ spring:
 
 miskk:
   jwt:
-    # 生产环境务必修改为足够长的随机字符串，且与各服务保持一致
+    # JWT 签发与解析都在网关（唯一持有方）。生产环境务必修改为足够长的随机字符串
     secret: ${JWT_SECRET:miskk-blog-jwt-secret-key-please-change-me-in-production-0001}
     expire-hours: 72
 

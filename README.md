@@ -100,7 +100,7 @@ Vite 开发服务器把 `/api` 代理到网关 `http://localhost:8100`。
 | `NACOS_ADDR` | `127.0.0.1:8848` | Nacos 注册中心 |
 | `MYSQL_ADDR` / `MYSQL_USER` / `MYSQL_PASSWORD` | `127.0.0.1:3306` / `root` / `123456` | MySQL 连接 |
 | `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` | `127.0.0.1` / `6379` / 空 | Redis |
-| `JWT_SECRET` | 内置开发值 | JWT 密钥（**生产必须替换**，≥32 字节，网关与各服务一致） |
+| `JWT_SECRET` | 内置开发值 | JWT 密钥（**生产必须替换**，≥32 字节；签发与解析都在网关，仅网关使用） |
 | `INTERNAL_TOKEN` | `miskk-internal-token-dev` | 服务间内部接口令牌 |
 | `MAIL_HOST` / `MAIL_USER` / `MAIL_PASSWORD` | 空 | 配置后验证码真实发信；为空则调试模式 |
 | `MAIL_DEBUG` | `true` | 未配置邮件时在响应中返回验证码 |
@@ -161,7 +161,7 @@ bash deploy.sh          # 等价于 docker compose -f docker-compose.prod.yml up
 
 设计要点：
 
-- **网关统一鉴权**：JWT 在网关解析，用户身份通过 `X-User-Info` 请求头（LoginUser 序列化 JSON：userId/role/ip）下发；下游服务通过拦截器还原 ThreadLocal 并校验 `@RequireLogin / @RequireAdmin`。
+- **网关统一鉴权**：JWT 的签发与解析都只在网关（登录校验通过后由网关生成 token，密钥仅网关持有），用户身份通过 `X-User-Info` 请求头（LoginUser 序列化 JSON：userId/role/ip）下发；下游服务通过拦截器还原 ThreadLocal 并校验 `@RequireLogin / @RequireAdmin`。
 - **内部接口保护**：`/internal/**` 只接受带 `X-Internal-Token` 的 Feign 调用。
 - **浏览量削峰**：浏览经 Redis `SADD` 按访客按天去重 + Hash 缓冲增量，博客服务每 30 秒批量落库。
 - **在线观看时长**：前端每 20 秒心跳上报（页面可见时），离开页面用 `sendBeacon` 兜底；按访客+日期聚合。

@@ -11,7 +11,6 @@ import cn.miskk.blog.common.constant.SecurityConstants;
 import cn.miskk.blog.common.dto.UserCardVO;
 import cn.miskk.blog.common.dto.UserStatsVO;
 import cn.miskk.blog.common.exception.BizException;
-import cn.miskk.blog.common.auth.JwtUtil;
 import cn.miskk.blog.common.dto.LoginDTO;
 import cn.miskk.blog.common.dto.RegisterDTO;
 import cn.miskk.blog.common.dto.UpdatePasswordDTO;
@@ -48,7 +47,6 @@ public class UserServiceImpl implements UserService {
 
     private final UserMapper userMapper;
     private final StringRedisTemplate redisTemplate;
-    private final JwtUtil jwtUtil;
     private final MailService mailService;
 
     @Value("${miskk.mail.debug:true}")
@@ -188,8 +186,8 @@ public class UserServiceImpl implements UserService {
         update.setLastLoginAt(LocalDateTime.now());
         userMapper.updateById(update);
 
-        String token = jwtUtil.createToken(user.getId(), user.getRole());
-        return new LoginVO(token, toVO(user));
+        // 只校验身份并回传用户信息；会话 token 由网关统一签发（JWT_SECRET 仅网关持有）
+        return new LoginVO(null, toVO(user));
     }
 
     // ==================== 资料 ====================
