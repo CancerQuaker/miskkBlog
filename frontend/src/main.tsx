@@ -6,17 +6,11 @@ import zhCN from 'antd/locale/zh_CN';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import App from './App';
-import { useThemeStore, shadeHex, hexToRgba } from './stores/themeStore';
+import { useThemeStore, shadeHex, hexToRgba, resolveTheme } from './stores/themeStore';
 import './styles/global.css';
 import 'highlight.js/styles/github-dark.css';
 
 dayjs.locale('zh-cn');
-
-/** 根据 mode 解析出真实的 html data-theme（light/dark/eye） */
-export function resolveTheme(mode: 'light' | 'dark' | 'eye' | 'system'): 'light' | 'dark' | 'eye' {
-  if (mode !== 'system') return mode;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
 
 const antdThemes: Record<string, any> = {
   light: {

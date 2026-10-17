@@ -49,6 +49,26 @@ export const useThemeStore = create<ThemeState>()(
   ),
 );
 
+/* ---------- 主题解析工具 ---------- */
+
+/** 根据 mode 解析出真实的主题（system 跟随系统深浅色），与 html[data-theme] 一致 */
+export function resolveTheme(mode: ThemeMode): 'light' | 'dark' | 'eye' {
+  if (mode !== 'system') return mode;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+/** 各主题内置主色（与 global.css 各主题块的 --primary 保持一致） */
+export const THEME_PRIMARY: Record<'light' | 'dark' | 'eye', string> = {
+  light: '#80a942',
+  dark: '#97b864',
+  eye: '#80a942',
+};
+
+/** ECharts 等 canvas 渲染无法消费 var(--primary)，用它在 JS 侧解析实际主色 */
+export function resolvePrimary(accent: string | null, resolved: 'light' | 'dark' | 'eye'): string {
+  return accent ?? THEME_PRIMARY[resolved];
+}
+
 /* ---------- 主题色派生工具 ---------- */
 
 function hexToRgb(hex: string): [number, number, number] {

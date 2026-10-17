@@ -7,6 +7,7 @@ import {
 import * as echarts from 'echarts';
 import { adminApi, DashboardVO, SystemInfo } from '../../api/admin';
 import { UsageProgress } from '../../components/Sidebar';
+import { useThemeStore, resolveTheme, resolvePrimary } from '../../stores/themeStore';
 
 function fmtUptime(sec: number) {
   const d = Math.floor(sec / 86400);
@@ -21,6 +22,9 @@ export default function Dashboard() {
   const postChartRef = useRef<HTMLDivElement>(null);
   const commentChartRef = useRef<HTMLDivElement>(null);
   const topChartRef = useRef<HTMLDivElement>(null);
+  const mode = useThemeStore((s) => s.mode);
+  const accent = useThemeStore((s) => s.accent);
+  const resolvedTheme = resolveTheme(mode);
 
   useEffect(() => {
     adminApi.dashboard().then(setData).catch(() => {});
@@ -30,10 +34,11 @@ export default function Dashboard() {
     return () => clearInterval(timer);
   }, []);
 
-  // 图表渲染
+  // 图表渲染；ECharts 画布无法消费 var(--primary)，改在 JS 侧按主题色覆盖链解析实际主色
   useEffect(() => {
     const a = data?.articles;
     if (!a) return;
+    const primary = resolvePrimary(accent, resolvedTheme);
 
     const mk = (ref: React.RefObject<HTMLDivElement>, option: echarts.EChartsOption) => {
       if (!ref.current) return null;
@@ -54,7 +59,7 @@ export default function Dashboard() {
       series: [{
         data: a.dailyPosts.map((d) => d.count),
         type: 'line', smooth: true, areaStyle: { opacity: 0.25 },
-        color: '#80a942',
+        color: primary,
       }],
       grid: { left: 40, right: 20, top: 40, bottom: 28 },
     }));
@@ -64,7 +69,7 @@ export default function Dashboard() {
       tooltip: { trigger: 'axis' },
       xAxis: { type: 'category', data: a.dailyComments.map((d) => d.date.slice(5)) },
       yAxis: { type: 'value', minInterval: 1 },
-      series: [{ data: a.dailyComments.map((d) => d.count), type: 'bar', color: '#9d6bf5', barWidth: '50%' }],
+      series: [{ data: a.dailyComments.map((d) => d.count), type: 'bar', color: primary, barWidth: '50%' }],
       grid: { left: 40, right: 20, top: 40, bottom: 28 },
     }));
 
@@ -76,12 +81,12 @@ export default function Dashboard() {
         data: [...a.topArticles].reverse().map((t) => t.title.length > 12 ? t.title.slice(0, 12) + '…' : t.title),
       },
       xAxis: { type: 'value' },
-      series: [{ data: [...a.topArticles].reverse().map((t) => t.views), type: 'bar', color: '#f6a522' }],
+      series: [{ data: [...a.topArticles].reverse().map((t) => t.views), type: 'bar', color: primary }],
       grid: { left: 130, right: 30, top: 40, bottom: 28 },
     }));
 
     return () => charts.forEach((c) => c?.dispose());
-  }, [data]);
+  }, [data, resolvedTheme, accent]);
 
   const a = data?.articles;
 
