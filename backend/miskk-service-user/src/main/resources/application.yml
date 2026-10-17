@@ -8,6 +8,9 @@ spring:
     nacos:
       discovery:
         server-addr: ${NACOS_ADDR:127.0.0.1:8848}
+        # Nacos 开启鉴权时填写（docker 部署经 NACOS_USERNAME/NACOS_PASSWORD 注入；本地默认无鉴权留空）
+        username: ${NACOS_USERNAME:}
+        password: ${NACOS_PASSWORD:}
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://${MYSQL_ADDR:127.0.0.1:3306}/miskk_user?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true

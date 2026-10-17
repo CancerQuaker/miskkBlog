@@ -98,11 +98,12 @@ Vite 开发服务器把 `/api` 代理到网关 `http://localhost:8100`。
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
 | `NACOS_ADDR` | `127.0.0.1:8848` | Nacos 注册中心 |
+| `NACOS_USERNAME` / `NACOS_PASSWORD` | 空 | Nacos 开启鉴权时服务注册用的账号密码（docker 部署配 `NACOS_AUTH_ENABLE` 时使用） |
 | `MYSQL_ADDR` / `MYSQL_USER` / `MYSQL_PASSWORD` | `127.0.0.1:3306` / `root` / `123456` | MySQL 连接 |
 | `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` | `127.0.0.1` / `6379` / 空 | Redis |
 | `JWT_SECRET` | 内置开发值 | JWT 密钥（**生产必须替换**，≥32 字节；签发与解析都在网关，仅网关使用） |
 | `INTERNAL_TOKEN` | `miskk-internal-token-dev` | 服务间内部接口令牌 |
-| `MAIL_HOST` / `MAIL_USER` / `MAIL_PASSWORD` | 空 | 配置后验证码真实发信；为空则调试模式 |
+| `MAIL_HOST` / `MAIL_PORT` / `MAIL_USER` / `MAIL_PASSWORD` | 空 / `465` / 空 / 空 | 配置后验证码真实发信；为空则调试模式 |
 | `MAIL_DEBUG` | `true` | 未配置邮件时在响应中返回验证码 |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | 空 | GitHub OAuth 登录；为空则提示未开放 |
 | `UPLOAD_DIR` | `~/.miskk/uploads` | 图片上传目录（用户/博客服务共享） |
@@ -116,13 +117,13 @@ Vite 开发服务器把 `/api` 代理到网关 `http://localhost:8100`。
 ```bash
 git clone https://github.com/CancerQuaker/miskkBlog.git
 cd miskkBlog/docker
-cp .env.example .env    # 修改 MYSQL_PASSWORD / JWT_SECRET / INTERNAL_TOKEN
+cp .env.example .env    # 必填 MYSQL_PASSWORD / JWT_SECRET / INTERNAL_TOKEN；端口/Nacos 鉴权/JVM 等可选变量见文件内说明
 bash deploy.sh          # 等价于 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 说明：
 
-- **安全模型**：只有 nginx 暴露 80 端口，MySQL/Redis/Nacos/网关都在 compose 内部网络，云安全组只需放行 80/443。
+- **安全模型**：默认只有 nginx 暴露 `SITE_PORT`（默认 80）端口，MySQL/Redis/Nacos/网关都在 compose 内部网络，云安全组只需放行 80/443；MySQL/Nacos 如需宿主机访问，compose 里预留了注释掉的 ports 映射。
 - **首次构建**约需几分钟（容器内编译）；国内服务器可在 `.env` 配 `MAVEN_MIRROR` / `NPM_REGISTRY` 镜像加速。
 - **数据备份**：`mysql-data` / `redis-data` 卷 + `docker/uploads/` 目录（上传图片）。
 - **HTTPS**：宿主机再加一层 Caddy / certbot 终止证书，反代到 80 即可。

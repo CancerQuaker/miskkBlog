@@ -8,6 +8,9 @@ spring:
     nacos:
       discovery:
         server-addr: ${NACOS_ADDR:127.0.0.1:8848}
+        # Nacos 开启鉴权时填写（docker 部署经 NACOS_USERNAME/NACOS_PASSWORD 注入；本地默认无鉴权留空）
+        username: ${NACOS_USERNAME:}
+        password: ${NACOS_PASSWORD:}
   servlet:
     multipart:
       max-file-size: 5MB

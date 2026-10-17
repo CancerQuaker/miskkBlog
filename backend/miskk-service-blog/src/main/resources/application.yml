@@ -8,6 +8,9 @@ spring:
     nacos:
       discovery:
         server-addr: ${NACOS_ADDR:127.0.0.1:8848}
+        # Nacos 开启鉴权时填写（docker 部署经 NACOS_USERNAME/NACOS_PASSWORD 注入；本地默认无鉴权留空）
+        username: ${NACOS_USERNAME:}
+        password: ${NACOS_PASSWORD:}
   datasource:
     # 双数据源：文章侧走主库 miskk_article，友链侧通过 @DS("friend") 路由到 miskk_friend
     dynamic:
