@@ -21,34 +21,40 @@ public class SystemMonitorService {
 
     private final SystemInfo systemInfo = new SystemInfo();
 
-    public SystemInfoVO collect() {
+    /** 上一轮 CPU ticks 基线：跨调用按轮询间隔计算平均使用率 */
+    private long[] prevSystemTicks;
+    private long[][] prevPerCoreTicks;
+
+    public synchronized SystemInfoVO collect() {
         HardwareAbstractionLayer hal = systemInfo.getHardware();
         OperatingSystem os = systemInfo.getOperatingSystem();
 
         SystemInfoVO vo = new SystemInfoVO();
 
-        // CPU：两次采样间隔内计算使用率
+        // CPU：与上一轮采集点比较，窗口即前端轮询间隔（约 5 秒），等价于任务管理器的滚动平均。
+        // Windows 下 200ms 级短窗口采样恒为 0（tick 量化），故仅服务启动后首轮无基线时用 300ms 短间隔兜底
         CentralProcessor cpu = hal.getProcessor();
         vo.setCpuCores(cpu.getLogicalProcessorCount());
-        long[] startTicks = cpu.getSystemCpuLoadTicks();
-        try {
-            Thread.sleep(200);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+        boolean first = prevSystemTicks == null;
+        long[] sysBaseline = first ? cpu.getSystemCpuLoadTicks() : prevSystemTicks;
+        long[][] coreBaseline = first ? cpu.getProcessorCpuLoadTicks() : prevPerCoreTicks;
+        if (first) {
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
-        double load = cpu.getSystemCpuLoadBetweenTicks(startTicks) * 100;
+        double load = cpu.getSystemCpuLoadBetweenTicks(sysBaseline) * 100;
         vo.setCpuLoad(Math.max(0, Math.min(100, load)));
         List<Double> cores = new ArrayList<>();
-        long[][] startPerProc = cpu.getProcessorCpuLoadTicks();
-        try {
-            Thread.sleep(100);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-        for (double l : cpu.getProcessorCpuLoadBetweenTicks(startPerProc)) {
+        for (double l : cpu.getProcessorCpuLoadBetweenTicks(coreBaseline)) {
             cores.add(Math.max(0, Math.min(100, l * 100)));
         }
         vo.setPerCoreLoad(cores);
+        // 本轮时刻作为下一轮基线
+        prevSystemTicks = cpu.getSystemCpuLoadTicks();
+        prevPerCoreTicks = cpu.getProcessorCpuLoadTicks();
 
         // 物理内存
         long memTotal = hal.getMemory().getTotal();
