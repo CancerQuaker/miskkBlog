@@ -22,7 +22,10 @@ mvn -pl backend/miskk-service-blog spring-boot:run
 
 # 前端
 cd frontend && npm run dev        # http://localhost:5173
-npm run build                     # tsc -b && vite build，类型检查也走这里
+npm run build                     # tsc -b && vite build，类型检查也走这里；产物在 frontend/dist/
+
+# 前端打包并压缩（产物 dist.zip 约 6-7 MB，解压后为 dist/ 目录，供部署分发）
+cd frontend && npm run build && powershell -Command "Compress-Archive -Path dist -DestinationPath dist.zip -Force"
 
 # 单元测试（gateway，工具型：密码哈希/内部 token/登录 token）
 mvn -pl backend/miskk-gateway test
