@@ -26,7 +26,7 @@ npm run build                     # tsc -b && vite build，类型检查也走这
 
 # 单元测试（gateway，工具型：密码哈希/内部 token/登录 token）
 mvn -pl backend/miskk-gateway test
-mvn -pl backend/miskk-gateway test -Dtest=PasswordHashTest -Dpwd=新密码   # 生成 BCrypt 哈希（写入 SQL 种子）
+mvn -pl backend/miskk-gateway test -Dtest=SecurityToolTest#generatePasswordHash -Dpwd=新密码   # 生成 BCrypt 哈希（写入 SQL 种子）
 ```
 
 gateway 之外暂无测试；整包构建仍带 `-DskipTests`。
