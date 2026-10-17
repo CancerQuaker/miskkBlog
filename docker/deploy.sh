@@ -10,7 +10,7 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
-docker compose -f docker-compose.prod.yml up -d --build
-docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.auto.yml up -d --build
+docker compose -f docker-compose.auto.yml ps
 echo
 echo "部署完成：http://<服务器IP>/（默认管理员 admin / admin123，请尽快在后台修改密码）"

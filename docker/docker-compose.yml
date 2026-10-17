@@ -1,45 +1,183 @@
-# 迷失客客の博客 - 本地基础设施
-# 用法：docker compose up -d
-# 包含：MySQL 8 / Redis 7 / Nacos 2.3（单机模式）
+# 迷失客客の博客 —— 本机产物全栈启动（不在容器内编译）
+#
+# 与 docker-compose.auto.yml 的区别：三个后端与 nginx 不做镜像构建，直接挂载本机
+# 已构建好的 jar 与 dist 运行，适合本机反复 mvn / npm 构建后整套快速起停。
+#
+# 前置（本机先构建产物）：
+#   mvn clean install -DskipTests     # 仓库根目录执行，生成 backend/*/target/*.jar
+#   cd frontend && npm run build      # 生成 frontend/dist
+#
+# 用法：
+#   cp .env.example .env              # 必填 MYSQL_PASSWORD / JWT_SECRET / INTERNAL_TOKEN（与 auto 版通用）
+#   docker compose up -d              # 全栈一套启动：MySQL/Redis/Nacos/三后端/nginx
+#   docker compose up -d mysql redis nacos   # 只起基础设施（后端跑 IDEA、前端跑 Vite 时）
+#
+# 改了代码想生效：本机重新构建对应模块，再 docker compose restart gateway user blog nginx
+# （jar 与 dist 是挂载进容器的，restart 即用新产物）。
+#
+# 安全模型与数据落盘同 docker-compose.auto.yml：默认只有 nginx 对外（SITE_PORT，默认 80），
+# MySQL/Redis/Nacos 的宿主机映射以注释形式预留（见各服务 ports）。
+
+name: miskk
+
+# 三个后端服务共享的环境变量（网关另加 SERVER_PORT，见 gateway 服务）
+x-backend-env: &backend-env
+  TZ: ${TZ:-Asia/Shanghai}
+  LANG: C.UTF-8
+  # 小内存机器可在 .env 设置 JAVA_TOOL_OPTIONS=-Xmx256m（JVM 标准变量，自动生效）
+  JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:-}
+  NACOS_ADDR: nacos:8848
+  # Nacos 开启鉴权时由 .env 注入 NACOS_USERNAME / NACOS_PASSWORD
+  NACOS_USERNAME: ${NACOS_USERNAME:-}
+  NACOS_PASSWORD: ${NACOS_PASSWORD:-}
+  MYSQL_ADDR: mysql:${MYSQL_SERVER_PORT:-3306}
+  MYSQL_USER: ${MYSQL_USER:-root}
+  MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 docker/.env 中设置 MYSQL_PASSWORD}
+  REDIS_HOST: redis
+  REDIS_PORT: ${REDIS_SERVER_PORT:-6379}
+  REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+  JWT_SECRET: ${JWT_SECRET:?请在 docker/.env 中设置 JWT_SECRET（≥32位随机字符串）}
+  INTERNAL_TOKEN: ${INTERNAL_TOKEN:?请在 docker/.env 中设置 INTERNAL_TOKEN}
+  MAIL_HOST: ${MAIL_HOST:-}
+  MAIL_USER: ${MAIL_USER:-}
+  MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+  GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+  GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
 
 services:
   mysql:
     image: mysql:8.4
     container_name: miskk-mysql
+    restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: 123456
-      TZ: Asia/Shanghai
-    ports:
-      - "3306:3306"
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:?请在 docker/.env 中设置 MYSQL_PASSWORD}
+      TZ: ${TZ:-Asia/Shanghai}
+    # 宿主机端口映射默认不开放（安全模型）；需要时取消注释（MYSQL_PORT=宿主机 / MYSQL_SERVER_PORT=容器内，见 .env）
+    #ports:
+    #  - "${MYSQL_PORT:-3306}:${MYSQL_SERVER_PORT:-3306}"
     volumes:
       - mysql-data:/var/lib/mysql
-      # 首次启动自动执行建表脚本
-      - ../sql:/docker-entrypoint-initdb.d:ro
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+      - ../sql:/docker-entrypoint-initdb.d:ro   # 首次启动自动执行三个建库脚本
+    # 容器内端口改动会经 MYSQL_ADDR 同步到后端连接串
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --port=${MYSQL_SERVER_PORT:-3306}
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-uroot", "-proot"]
+      test: ["CMD-SHELL", "mysqladmin ping -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
       interval: 5s
       retries: 12
 
   redis:
     image: redis:7-alpine
     container_name: miskk-redis
-    ports:
-      - "6379:6379"
+    restart: unless-stopped
+    # REDIS_PASSWORD 为空 = 无密码（与旧版行为一致）；设置后 redis 以该密码启动。
+    # 容器内端口改动会经 REDIS_PORT 同步到后端连接配置
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-}", "--port", "${REDIS_SERVER_PORT:-6379}"]
+    # 宿主机端口映射默认不开放；需要时取消注释（REDIS_PORT=宿主机 / REDIS_SERVER_PORT=容器内，见 .env）
+    #ports:
+    #  - "${REDIS_PORT:-6379}:${REDIS_SERVER_PORT:-6379}"
     volumes:
       - redis-data:/data
 
   nacos:
     image: nacos/nacos-server:v2.3.2
     container_name: miskk-nacos
+    restart: unless-stopped
     environment:
       MODE: standalone
-      NACOS_AUTH_ENABLE: "false"
+      # 控制台鉴权（默认关闭；开启时在 .env 配置 NACOS_USERNAME/NACOS_PASSWORD/NACOS_AUTH_TOKEN 等）
+      NACOS_AUTH_ENABLE: ${NACOS_AUTH_ENABLE:-false}
+      NACOS_AUTH_TOKEN: ${NACOS_AUTH_TOKEN:-}
+      NACOS_AUTH_IDENTITY_KEY: ${NACOS_AUTH_IDENTITY_KEY:-serverIdentity}
+      NACOS_AUTH_IDENTITY_VALUE: ${NACOS_AUTH_IDENTITY_VALUE:-}
       JVM_XMS: 256m
       JVM_XMX: 512m
+      TZ: ${TZ:-Asia/Shanghai}
+    # 仅宿主机端口可调（NACOS_PORT 见 .env）。容器内端口固定 8848：客户端 gRPC 端口按
+    # “服务端口+1000” 自动推算，改容器内端口会导致服务注册发现异常。
+    #ports:
+    #  - "${NACOS_PORT:-8848}:8848"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8848/nacos/v1/console/health/readiness"]
+      interval: 10s
+      retries: 30
+      start_period: 20s
+
+  # ---- 三个后端服务：挂载本机 mvn 构建出的 target 目录，通配符启动其中的可执行 jar ----
+  gateway:
+    image: eclipse-temurin:17-jre
+    container_name: miskk-gateway
+    restart: unless-stopped
+    environment:
+      <<: *backend-env
+      # 网关容器内监听端口（nginx 反代目标）。SERVER_PORT 是 Spring Boot 标准环境变量，
+      # 优先级高于 application.yml 的 server.port
+      SERVER_PORT: ${GATEWAY_PORT:-8100}
+    volumes:
+      # target 下只有一个可执行 jar（repackage 产物；*.jar.original 不参与 *.jar 匹配），
+      # jar 文件名带版本号（如 miskk-gateway-1.0.0.jar），通配符启动免随版本改 compose
+      - ../backend/miskk-gateway/target:/app
+    # glob 由 sh 展开，exec 后 java 成为容器主进程（信号可正常送达）
+    entrypoint: ["sh", "-c", "exec java -jar /app/*.jar"]
+    depends_on:
+      nacos:
+        condition: service_healthy
+
+  user:
+    image: eclipse-temurin:17-jre
+    container_name: miskk-user
+    restart: unless-stopped
+    environment:
+      <<: *backend-env
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - ../backend/miskk-service-user/target:/app
+      - ./uploads:/data/uploads
+    entrypoint: ["sh", "-c", "exec java -jar /app/*.jar"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      nacos:
+        condition: service_healthy
+
+  blog:
+    image: eclipse-temurin:17-jre
+    container_name: miskk-blog
+    restart: unless-stopped
+    environment:
+      <<: *backend-env
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - ../backend/miskk-service-blog/target:/app
+      - ./uploads:/data/uploads
+    entrypoint: ["sh", "-c", "exec java -jar /app/*.jar"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      nacos:
+        condition: service_healthy
+
+  # ---- 前端静态资源 + 反向代理：唯一对外入口 ----
+  nginx:
+    image: nginx:alpine
+    container_name: miskk-nginx
+    restart: unless-stopped
+    environment:
+      # nginx.conf 经 nginx 镜像 template 机制在启动时按环境变量渲染
+      # （挂载为 /etc/nginx/templates/default.conf.template，默认 80 / 8100）
+      NGINX_PORT: ${NGINX_PORT:-80}
+      GATEWAY_PORT: ${GATEWAY_PORT:-8100}
     ports:
-      - "8848:8848"
-      - "9848:9848"
+      - "${SITE_PORT:-80}:${NGINX_PORT:-80}"
+    volumes:
+      # 本机 npm run build 产物 + 与 auto 版同一份 nginx.conf
+      - ../frontend/dist:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/templates/default.conf.template:ro
+    depends_on:
+      - gateway
 
 volumes:
   mysql-data:

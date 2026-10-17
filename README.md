@@ -19,8 +19,8 @@ miskkBlog/
 ├── frontend/                   # 前端（Vite 6 + React 18 + TS + AntD 5）
 ├── sql/                        # MySQL 建库脚本（三库：user / article / friend）
 └── docker/
-    ├── docker-compose.yml      # 本地开发：MySQL + Redis + Nacos 一键启动
-    └── docker-compose.prod.yml # 生产部署：拉代码一键起全栈（含构建），见「生产部署」
+    ├── docker-compose.yml      # 挂载本机已构建产物（jar/dist）启动全栈；亦可只起基础设施
+    └── docker-compose.auto.yml # 一键编译+部署：拉代码即起全栈（容器内构建），见「生产部署」
 ```
 
 ## 技术栈
@@ -41,11 +41,13 @@ miskkBlog/
 
 ### 1. 启动基础设施
 
-有 Docker：
+有 Docker（`docker-compose.yml` 已含全套服务，本地开发只起这三个即可）：
 
 ```bash
 cd docker
-docker compose up -d      # MySQL(3306) + Redis(6379) + Nacos(8848)
+cp .env.example .env     # 本地开发建议把 MYSQL_PASSWORD 设为 123456（与后端默认连接参数一致）
+# 编辑 docker-compose.yml，放开 mysql / redis / nacos 注释掉的 ports（后端要从宿主机连接）
+docker compose up -d mysql redis nacos    # MySQL(3306) + Redis(6379) + Nacos(8848)，首次启动自动执行 sql/ 建库
 ```
 
 无 Docker：本机安装 MySQL / Redis，并从 [Nacos 发布页](https://github.com/alibaba/nacos/releases) 下载后以 `startup.cmd -m standalone` 启动。
@@ -118,11 +120,12 @@ Vite 开发服务器把 `/api` 代理到网关 `http://localhost:8100`。
 git clone https://github.com/CancerQuaker/miskkBlog.git
 cd miskkBlog/docker
 cp .env.example .env    # 必填 MYSQL_PASSWORD / JWT_SECRET / INTERNAL_TOKEN；端口/Nacos 鉴权/JVM 等可选变量见文件内说明
-bash deploy.sh          # 等价于 docker compose -f docker-compose.prod.yml up -d --build
+bash deploy.sh          # 等价于 docker compose -f docker-compose.auto.yml up -d --build
 ```
 
 说明：
 
+- **本机已有构建产物**时（根目录 `mvn clean install -DskipTests` + `frontend` 下 `npm run build`），可改用同目录 `docker-compose.yml`：不做容器内编译，直接挂载 `backend/*/target/*.jar` 与 `frontend/dist` 启动同一套全栈（与 `.env` 通用；只想起基础设施时 `docker compose up -d mysql redis nacos`）。
 - **安全模型**：默认只有 nginx 暴露 `SITE_PORT`（默认 80）端口，MySQL/Redis/Nacos/网关都在 compose 内部网络，云安全组只需放行 80/443。所有端口（宿主机侧与容器内侧，如 MySQL/Redis/Nginx）都可在 `.env` 自定义，MySQL/Redis/Nacos 的宿主机映射在 compose 里以注释预留。
 - **首次构建**约需几分钟（容器内编译）；国内服务器可在 `.env` 配 `MAVEN_MIRROR` / `NPM_REGISTRY` 镜像加速。
 - **数据备份**：`mysql-data` / `redis-data` 卷 + `docker/uploads/` 目录（上传图片）。
