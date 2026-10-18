@@ -5,8 +5,9 @@ import dayjs from 'dayjs';
 import { adminFriendApi, FriendApply, FriendLink } from '../../api/friend';
 import { DefaultAvatar } from '../../components/Common';
 
+// 已通过走主题色变量；待审核金、已驳回红为语义色不随主题色变
 const statusTag = (s: number) =>
-  s === 0 ? <Tag color="gold">待审核</Tag> : s === 1 ? <Tag color="pink">已通过</Tag> : <Tag color="red">已驳回</Tag>;
+  s === 0 ? <Tag color="gold">待审核</Tag> : s === 1 ? <Tag className="tag-primary">已通过</Tag> : <Tag color="red">已驳回</Tag>;
 
 export default function FriendReview() {
   const [applies, setApplies] = useState<FriendApply[]>([]);

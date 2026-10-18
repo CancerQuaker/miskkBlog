@@ -6,9 +6,10 @@ import dayjs from 'dayjs';
 import { ArticleCard, CategoryVO, adminArticleApi } from '../../api/article';
 import { articleApi } from '../../api/article';
 
-const statusMap: Record<number, { text: string; color: string }> = {
-  0: { text: '草稿', color: 'default' },
-  1: { text: '已发布', color: 'pink' },
+// 已发布走主题色变量；草稿为中性灰、已隐藏为警示橙，属语义色不随主题色变
+const statusMap: Record<number, { text: string; color?: string; className?: string }> = {
+  0: { text: '草稿' },
+  1: { text: '已发布', className: 'tag-primary' },
   2: { text: '已隐藏', color: 'orange' },
 };
 
@@ -88,7 +89,7 @@ export default function ArticleManage() {
             dataIndex: 'title',
             render: (v, row) => (
               <Link to={`/article/${row.id}`} style={{ color: 'var(--text-main)' }}>
-                {row.pinned && <Tag color="pink">置顶</Tag>}
+                {row.pinned && <Tag className="tag-primary">置顶</Tag>}
                 {v}
               </Link>
             ),
@@ -98,7 +99,7 @@ export default function ArticleManage() {
             title: '状态',
             dataIndex: 'status',
             width: 90,
-            render: (s) => <Tag color={statusMap[s]?.color}>{statusMap[s]?.text}</Tag>,
+            render: (s) => <Tag color={statusMap[s]?.color} className={statusMap[s]?.className}>{statusMap[s]?.text}</Tag>,
           },
           { title: '浏览', dataIndex: 'views', width: 70 },
           { title: '点赞', dataIndex: 'likes', width: 70 },

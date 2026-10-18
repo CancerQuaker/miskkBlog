@@ -598,6 +598,12 @@ a {
 .tag-chip:hover {
   transform: scale(1.06);
 }
+/* AntD Tag 主题色变体：后台"置顶/已发布/已通过"等品牌态标签，跟随外观主题色 */
+.tag-primary.ant-tag {
+  color: var(--primary);
+  background: var(--primary-weak);
+  border-color: var(--primary);
+}
 
 /* ---------- 布局 ---------- */
 .layout-with-sidebar {
