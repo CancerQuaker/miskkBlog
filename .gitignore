@@ -28,6 +28,7 @@ wallpapers/
 # local tool state
 .workbuddy/
 .playwright-cli/
+.worktrees/
 
 # OS
 .DS_Store
