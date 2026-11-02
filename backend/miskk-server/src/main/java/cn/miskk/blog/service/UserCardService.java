@@ -1,0 +1,61 @@
+package cn.miskk.blog.service;
+
+import cn.hutool.json.JSONUtil;
+import cn.miskk.blog.common.constant.RedisKeys;
+import cn.miskk.blog.common.dto.UserCardVO;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
+
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 用户名片（昵称+头像）获取：优先 Redis 缓存，未命中批量查询用户库并回填缓存。
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class UserCardService {
+
+    private final UserService userService;
+    private final StringRedisTemplate redisTemplate;
+
+    public Map<Long, UserCardVO> getCards(List<Long> ids) {
+        Map<Long, UserCardVO> result = new HashMap<>();
+        if (ids == null || ids.isEmpty()) {
+            return result;
+        }
+        List<Long> distinct = ids.stream().filter(java.util.Objects::nonNull).distinct().toList();
+        List<Long> missing = new ArrayList<>();
+
+        for (Long id : distinct) {
+            String cached = redisTemplate.opsForValue().get(RedisKeys.USER_CARD + id);
+            if (cached != null) {
+                result.put(id, JSONUtil.toBean(cached, UserCardVO.class));
+            } else {
+                missing.add(id);
+            }
+        }
+
+        if (!missing.isEmpty()) {
+            try {
+                Map<Long, UserCardVO> fetched = userService.getUserCards(missing);
+                if (fetched != null) {
+                    fetched.forEach((id, card) -> {
+                        result.put(id, card);
+                        redisTemplate.opsForValue().set(RedisKeys.USER_CARD + id,
+                                JSONUtil.toJsonStr(card), Duration.ofMinutes(10));
+                    });
+                }
+            } catch (Exception e) {
+                log.warn("批量获取用户名片失败: {}", e.getMessage());
+            }
+        }
+        return result;
+    }
+}
