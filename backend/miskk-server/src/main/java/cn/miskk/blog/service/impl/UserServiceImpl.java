@@ -38,7 +38,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 用户服务实现（MySQL 基础库 miskk_base）。
+ * 用户服务实现（PostgreSQL 单库 miskk_blog）。
  */
 @Slf4j
 @Service

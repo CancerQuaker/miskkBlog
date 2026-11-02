@@ -1,33 +1,42 @@
 package cn.miskk.blog.service.impl;
 
-import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.miskk.blog.common.dto.ArticleSaveDTO;
+import cn.miskk.blog.entity.Article;
+import cn.miskk.blog.entity.ArticleLike;
+import cn.miskk.blog.entity.ArticleTag;
+import cn.miskk.blog.entity.Category;
+import cn.miskk.blog.entity.Comment;
+import cn.miskk.blog.entity.ShareLog;
+import cn.miskk.blog.entity.Tag;
+import cn.miskk.blog.mapper.ArticleLikeMapper;
+import cn.miskk.blog.mapper.ArticleMapper;
+import cn.miskk.blog.mapper.ArticleTagMapper;
+import cn.miskk.blog.mapper.CategoryMapper;
+import cn.miskk.blog.mapper.CommentMapper;
+import cn.miskk.blog.mapper.ShareLogMapper;
+import cn.miskk.blog.mapper.TagMapper;
+import cn.miskk.blog.service.ArticleService;
+import cn.miskk.blog.service.UserCardService;
+import cn.miskk.blog.common.vo.ArticleCardVO;
+import cn.miskk.blog.common.vo.ArticleDetailVO;
+import cn.miskk.blog.common.vo.TagVO;
 import cn.miskk.blog.common.api.PageVO;
+import cn.miskk.blog.common.api.PageVOConverter;
 import cn.miskk.blog.common.auth.LoginUser;
 import cn.miskk.blog.common.constant.RedisKeys;
-import cn.miskk.blog.common.dto.ArticleSaveDTO;
 import cn.miskk.blog.common.dto.ArticleStatsVO;
 import cn.miskk.blog.common.dto.DailyCountVO;
 import cn.miskk.blog.common.dto.TopArticleVO;
 import cn.miskk.blog.common.dto.UserCardVO;
 import cn.miskk.blog.common.exception.BizException;
-import cn.miskk.blog.common.vo.ArticleCardVO;
-import cn.miskk.blog.common.vo.ArticleDetailVO;
-import cn.miskk.blog.common.vo.TagVO;
-import cn.miskk.blog.document.ArticleDoc;
-import cn.miskk.blog.document.CategoryDoc;
-import cn.miskk.blog.document.CommentDoc;
-import cn.miskk.blog.document.TagDoc;import cn.miskk.blog.service.ArticleService;
-import cn.miskk.blog.service.UserCardService;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.Duration;
@@ -39,21 +48,22 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * 文章服务实现（MongoDB）：列表/详情/搜索/管理 CRUD/浏览量 Redis 缓冲/站点统计。
- * <p>
- * 文章域文档全部存于 MongoDB（article/category/tag/comment/article_like/share_log/watch_record），
- * 作者名片仍经 UserCardService 查 MySQL 用户表 + Redis 缓存；
- * 计数字段（views/likes/comments/shares/watchSeconds）一律用 $inc 原子更新。
+ * 文章服务实现：列表/详情/搜索/管理 CRUD/浏览量 Redis 缓冲/站点统计。
  */
 @Service
 @RequiredArgsConstructor
 public class ArticleServiceImpl implements ArticleService {
 
-    private final MongoTemplate mongoTemplate;
+    private final ArticleMapper articleMapper;
+    private final CategoryMapper categoryMapper;
+    private final TagMapper tagMapper;
+    private final ArticleTagMapper articleTagMapper;
+    private final CommentMapper commentMapper;
+    private final ArticleLikeMapper likeMapper;
+    private final ShareLogMapper shareLogMapper;
     private final UserCardService userCardService;
     private final StringRedisTemplate redisTemplate;
 
@@ -62,30 +72,35 @@ public class ArticleServiceImpl implements ArticleService {
     @Override
     public PageVO<ArticleCardVO> page(long page, long size, Long categoryId, Long tagId,
                                       String keyword, boolean publishedOnly) {
-        int limit = (int) Math.min(size, 50);
-        Criteria criteria = notDeleted();
-        if (publishedOnly) {
-            criteria = criteria.and("status").is(1);
-        }
-        if (categoryId != null) {
-            criteria = criteria.and("categoryId").is(categoryId);
-        }
+        Page<Article> p = new Page<>(page, Math.min(size, 50));
+        var wrapper = Wrappers.<Article>lambdaQuery()
+                .eq(publishedOnly, Article::getStatus, 1)
+                .eq(categoryId != null, Article::getCategoryId, categoryId)
+                // PostgreSQL 的 LIKE 区分大小写，用 ILIKE 保持与原 MySQL 行为一致（不区分大小写）
+                .and(keyword != null && !keyword.isBlank(), w -> w
+                        .apply("title ILIKE {0}", "%" + keyword + "%")
+                        .or().apply("summary ILIKE {0}", "%" + keyword + "%"))
+                .orderByDesc(Article::getPinned)
+                .orderByDesc(Article::getPublishedAt)
+                .orderByDesc(Article::getId);
+
         if (tagId != null) {
-            criteria = criteria.and("tags").is(tagId);
+            List<Long> articleIds = articleTagMapper.selectList(Wrappers.<ArticleTag>lambdaQuery()
+                            .eq(ArticleTag::getTagId, tagId))
+                    .stream().map(ArticleTag::getArticleId).toList();
+            if (articleIds.isEmpty()) {
+                return PageVO.empty(page, size);
+            }
+            wrapper.in(Article::getId, articleIds);
         }
-        if (StringUtils.hasText(keyword)) {
-            Pattern kw = like(keyword);
-            criteria = criteria.orOperator(
-                    Criteria.where("title").regex(kw),
-                    Criteria.where("summary").regex(kw));
-        }
-        return pageOf(buildPageQuery(criteria, page, limit), limit, page,
-                Sort.by(Sort.Order.desc("pinned"), Sort.Order.desc("publishedAt"), Sort.Order.desc("_id")));
+
+        Page<Article> result = articleMapper.selectPage(p, wrapper);
+        return PageVOConverter.of(result, this::toCard);
     }
 
     @Override
     public ArticleDetailVO detail(Long id, LoginUser login) {
-        ArticleDoc article = findArticle(id);
+        Article article = articleMapper.selectById(id);
         if (article == null) {
             throw new BizException("文章不存在");
         }
@@ -103,24 +118,24 @@ public class ArticleServiceImpl implements ArticleService {
         vo.setReadingMinutes(Math.max(1, vo.getWordCount() / 400));
 
         vo.setCategoryName(categoryName(article.getCategoryId()));
-        vo.setTags(findTagsOf(article.getTags()));
+        vo.setTags(findTagsOf(id));
         Map<Long, UserCardVO> cards = userCardService.getCards(List.of(article.getAuthorId()));
         vo.setAuthor(cards.get(article.getAuthorId()));
 
-        if (login != null && login.getUserId() != null) {
-            vo.setLiked(mongoTemplate.exists(Query.query(Criteria.where("articleId").is(id)
-                    .and("userId").is(login.getUserId())), "article_like"));
+        if (login != null) {
+            vo.setLiked(likeMapper.selectCount(Wrappers.<ArticleLike>lambdaQuery()
+                    .eq(ArticleLike::getArticleId, id)
+                    .eq(ArticleLike::getUserId, login.getUserId())) > 0);
         }
 
-        // 上下篇导航（相邻发布时间）
-        Query prevQuery = Query.query(notDeleted().and("status").is(1)
-                .and("publishedAt").lt(article.getPublishedAt()))
-                .with(Sort.by(Sort.Order.desc("publishedAt"))).limit(1);
-        ArticleDoc prev = mongoTemplate.findOne(prevQuery, ArticleDoc.class);
-        Query nextQuery = Query.query(notDeleted().and("status").is(1)
-                .and("publishedAt").gt(article.getPublishedAt()))
-                .with(Sort.by(Sort.Order.asc("publishedAt"))).limit(1);
-        ArticleDoc next = mongoTemplate.findOne(nextQuery, ArticleDoc.class);
+        Article prev = articleMapper.selectOne(Wrappers.<Article>lambdaQuery()
+                .eq(Article::getStatus, 1)
+                .lt(Article::getPublishedAt, article.getPublishedAt())
+                .orderByDesc(Article::getPublishedAt).last("LIMIT 1"));
+        Article next = articleMapper.selectOne(Wrappers.<Article>lambdaQuery()
+                .eq(Article::getStatus, 1)
+                .gt(Article::getPublishedAt, article.getPublishedAt())
+                .orderByAsc(Article::getPublishedAt).last("LIMIT 1"));
         if (prev != null) {
             vo.setPrevId(prev.getId());
             vo.setPrevTitle(prev.getTitle());
@@ -134,34 +149,33 @@ public class ArticleServiceImpl implements ArticleService {
 
     @Override
     public PageVO<ArticleCardVO> search(String keyword, long page, long size) {
-        int limit = (int) Math.min(size, 50);
-        Pattern kw = like(keyword);
-        Criteria criteria = notDeleted().and("status").is(1)
-                .orOperator(Criteria.where("title").regex(kw),
-                        Criteria.where("summary").regex(kw),
-                        Criteria.where("content").regex(kw));
-        return pageOf(buildPageQuery(criteria, page, limit), limit, page,
-                Sort.by(Sort.Order.desc("publishedAt")));
+        Page<Article> p = new Page<>(page, Math.min(size, 50));
+        Page<Article> result = articleMapper.selectPage(p, Wrappers.<Article>lambdaQuery()
+                .eq(Article::getStatus, 1)
+                .and(StringUtils.hasText(keyword), w -> w
+                        .apply("title ILIKE {0}", "%" + keyword + "%")
+                        .or().apply("summary ILIKE {0}", "%" + keyword + "%")
+                        .or().apply("content ILIKE {0}", "%" + keyword + "%"))
+                .orderByDesc(Article::getPublishedAt));
+        return PageVOConverter.of(result, this::toCard);
     }
 
     // ==================== 管理 ====================
 
     @Override
+    @Transactional
     public ArticleDetailVO save(ArticleSaveDTO dto, Long authorId, Long articleId) {
-        LocalDateTime now = LocalDateTime.now();
-        ArticleDoc article = articleId == null ? null : findArticle(articleId);
-        boolean creating = article == null;
-        if (creating) {
-            article = new ArticleDoc();
-            article.setId(IdUtil.getSnowflakeNextId());
+        Article article = articleId == null ? new Article() : articleMapper.selectById(articleId);
+        if (article == null) {
+            throw new BizException("文章不存在");
+        }
+        if (article.getId() == null) {
             article.setViews(0L);
             article.setLikes(0L);
             article.setComments(0L);
             article.setShares(0L);
             article.setWatchSeconds(0L);
             article.setAuthorId(authorId);
-            article.setDeleted(false);
-            article.setCreatedAt(now);
         }
         article.setTitle(dto.getTitle());
         article.setSummary(StringUtils.hasText(dto.getSummary())
@@ -172,36 +186,46 @@ public class ArticleServiceImpl implements ArticleService {
         article.setStatus(dto.getStatus());
         article.setPinned(Boolean.TRUE.equals(dto.getPinned()) ? 1 : 0);
         if (dto.getStatus() == 1 && article.getPublishedAt() == null) {
-            article.setPublishedAt(now);
+            article.setPublishedAt(LocalDateTime.now());
         }
-        article.setTags(dto.getTagNames() == null ? List.of()
-                : dto.getTagNames().stream().filter(StringUtils::hasText).distinct()
-                        .map(this::upsertTag).toList());
-        article.setUpdatedAt(now);
-        mongoTemplate.save(article);
+        if (article.getId() == null) {
+            articleMapper.insert(article);
+        } else {
+            articleMapper.updateById(article);
+        }
 
+        // 重建标签关联
+        articleTagMapper.delete(Wrappers.<ArticleTag>lambdaQuery().eq(ArticleTag::getArticleId, article.getId()));
+        if (dto.getTagNames() != null) {
+            for (String name : dto.getTagNames().stream().filter(StringUtils::hasText).distinct().toList()) {
+                ArticleTag at = new ArticleTag();
+                at.setArticleId(article.getId());
+                at.setTagId(upsertTag(name));
+                articleTagMapper.insert(at);
+            }
+        }
         // 保存者视角（管理员权限）返回详情，草稿也能回显
-        return detail(article.getId(), new LoginUser(authorId, 1));
+        return detail(article.getId(), new cn.miskk.blog.common.auth.LoginUser(authorId, 1));
     }
 
     @Override
+    @Transactional
     public void delete(Long id) {
-        // 逻辑删除（评论与点赞记录保留，与原 MySQL @TableLogic 行为一致）
-        mongoTemplate.updateFirst(Query.query(Criteria.where("_id").is(id).and("deleted").ne(true)),
-                new Update().set("deleted", true).set("updatedAt", LocalDateTime.now()), ArticleDoc.class);
+        articleMapper.deleteById(id);
+        articleTagMapper.delete(Wrappers.<ArticleTag>lambdaQuery().eq(ArticleTag::getArticleId, id));
     }
 
     @Override
     public void updateStatus(Long id, Integer status) {
-        ArticleDoc article = findArticle(id);
+        Article article = articleMapper.selectById(id);
         if (article == null) {
             throw new BizException("文章不存在");
         }
-        Update update = new Update().set("status", status).set("updatedAt", LocalDateTime.now());
+        article.setStatus(status);
         if (status == 1 && article.getPublishedAt() == null) {
-            update.set("publishedAt", LocalDateTime.now());
+            article.setPublishedAt(LocalDateTime.now());
         }
-        mongoTemplate.updateFirst(Query.query(Criteria.where("_id").is(id)), update, ArticleDoc.class);
+        articleMapper.updateById(article);
     }
 
     // ==================== 浏览量（Redis 缓冲 + 定时落库） ====================
@@ -229,8 +253,13 @@ public class ArticleServiceImpl implements ArticleService {
         for (Map.Entry<Object, Object> entry : entries.entrySet()) {
             Long articleId = Long.valueOf(entry.getKey().toString());
             long delta = Long.parseLong(entry.getValue().toString());
-            mongoTemplate.updateFirst(Query.query(Criteria.where("_id").is(articleId).and("deleted").ne(true)),
-                    new Update().inc("views", delta), ArticleDoc.class);
+            Article article = articleMapper.selectById(articleId);
+            if (article != null) {
+                Article update = new Article();
+                update.setId(articleId);
+                update.setViews((article.getViews() == null ? 0 : article.getViews()) + delta);
+                articleMapper.updateById(update);
+            }
             redisTemplate.opsForHash().delete(RedisKeys.ARTICLE_VIEW_BUFFER, entry.getKey());
         }
     }
@@ -240,31 +269,28 @@ public class ArticleServiceImpl implements ArticleService {
     @Override
     public ArticleStatsVO statsOverview() {
         ArticleStatsVO vo = new ArticleStatsVO();
-        vo.setTotalArticles(mongoTemplate.count(Query.query(notDeleted()), ArticleDoc.class));
-        vo.setPublishedArticles(mongoTemplate.count(Query.query(notDeleted().and("status").is(1)), ArticleDoc.class));
+        vo.setTotalArticles(articleMapper.selectCount(Wrappers.<Article>lambdaQuery()));
+        vo.setPublishedArticles(articleMapper.selectCount(Wrappers.<Article>lambdaQuery()
+                .eq(Article::getStatus, 1)));
 
-        long totalViews = 0;
-        Query viewsQuery = Query.query(notDeleted());
-        viewsQuery.fields().include("views");
-        for (ArticleDoc a : mongoTemplate.find(viewsQuery, ArticleDoc.class)) {
-            totalViews += a.getViews() == null ? 0 : a.getViews();
-        }
+        Long totalViews = articleMapper.selectList(Wrappers.<Article>lambdaQuery().select(Article::getViews))
+                .stream().mapToLong(a -> a.getViews() == null ? 0 : a.getViews()).sum();
         vo.setTotalViews(totalViews);
 
-        vo.setTotalComments(mongoTemplate.count(Query.query(commentNotDeleted()), CommentDoc.class));
-        vo.setTotalLikes(countCollection("article_like"));
-        vo.setTotalShares(countCollection("share_log"));
+        vo.setTotalComments(commentMapper.selectCount(Wrappers.<Comment>lambdaQuery()));
+        vo.setTotalLikes(likeMapper.selectCount(null));
+        vo.setTotalShares(shareLogMapper.selectCount(null));
 
         YearMonth now = YearMonth.now();
-        vo.setMonthPublished(mongoTemplate.count(Query.query(notDeleted().and("status").is(1)
-                .and("publishedAt").gte(now.atDay(1).atStartOfDay())
-                .lt(now.plusMonths(1).atDay(1).atStartOfDay())), ArticleDoc.class));
+        vo.setMonthPublished(articleMapper.selectCount(Wrappers.<Article>lambdaQuery()
+                .eq(Article::getStatus, 1)
+                .ge(Article::getPublishedAt, now.atDay(1).atStartOfDay())
+                .lt(Article::getPublishedAt, now.plusMonths(1).atDay(1).atStartOfDay())));
 
         Map<LocalDate, Long> postCounts = new HashMap<>();
-        Query postsQuery = Query.query(notDeleted().and("status").is(1)
-                .and("publishedAt").gte(LocalDate.now().minusDays(29).atStartOfDay()));
-        postsQuery.fields().include("publishedAt");
-        for (ArticleDoc a : mongoTemplate.find(postsQuery, ArticleDoc.class)) {
+        for (Article a : articleMapper.selectList(Wrappers.<Article>lambdaQuery()
+                .select(Article::getPublishedAt).eq(Article::getStatus, 1)
+                .ge(Article::getPublishedAt, LocalDate.now().minusDays(29).atStartOfDay()))) {
             if (a.getPublishedAt() != null) {
                 postCounts.merge(a.getPublishedAt().toLocalDate(), 1L, Long::sum);
             }
@@ -272,18 +298,18 @@ public class ArticleServiceImpl implements ArticleService {
         vo.setDailyPosts(toDailyList(postCounts, 30));
 
         Map<LocalDate, Long> commentCounts = new HashMap<>();
-        Query commentsQuery = Query.query(commentNotDeleted()
-                .and("createdAt").gte(LocalDate.now().minusDays(13).atStartOfDay()));
-        commentsQuery.fields().include("createdAt");
-        for (CommentDoc c : mongoTemplate.find(commentsQuery, CommentDoc.class)) {
+        for (Comment c : commentMapper.selectList(Wrappers.<Comment>lambdaQuery()
+                .select(Comment::getCreatedAt)
+                .ge(Comment::getCreatedAt, LocalDate.now().minusDays(13).atStartOfDay()))) {
             if (c.getCreatedAt() != null) {
                 commentCounts.merge(c.getCreatedAt().toLocalDate(), 1L, Long::sum);
             }
         }
         vo.setDailyComments(toDailyList(commentCounts, 14));
 
-        vo.setTopArticles(mongoTemplate.find(Query.query(notDeleted().and("status").is(1))
-                        .with(Sort.by(Sort.Order.desc("views"))).limit(10), ArticleDoc.class)
+        vo.setTopArticles(articleMapper.selectList(Wrappers.<Article>lambdaQuery()
+                        .eq(Article::getStatus, 1)
+                        .orderByDesc(Article::getViews).last("LIMIT 10"))
                 .stream()
                 .map(a -> new TopArticleVO(a.getId(), a.getTitle(), a.getViews(), a.getLikes(), a.getComments()))
                 .toList());
@@ -301,47 +327,12 @@ public class ArticleServiceImpl implements ArticleService {
 
     // ==================== 私有工具 ====================
 
-    /** 未逻辑删除的文章条件 */
-    private Criteria notDeleted() {
-        return Criteria.where("deleted").ne(true);
-    }
-
-    /** 未逻辑删除的评论条件 */
-    private Criteria commentNotDeleted() {
-        return Criteria.where("deleted").ne(true);
-    }
-
-    /** 按 _id 取未逻辑删除的文章 */
-    private ArticleDoc findArticle(Long id) {
-        return mongoTemplate.findOne(Query.query(Criteria.where("_id").is(id).and("deleted").ne(true)),
-                ArticleDoc.class);
-    }
-
-    private Query buildPageQuery(Criteria criteria, long page, int limit) {
-        Query query = Query.query(criteria);
-        query.skip((page - 1) * limit).limit(limit);
-        return query;
-    }
-
-    private PageVO<ArticleCardVO> pageOf(Query query, int limit, long page, Sort sort) {
-        query.with(sort);
-        long total = mongoTemplate.count(Query.of(query).limit(-1).skip(-1), ArticleDoc.class);
-        List<ArticleCardVO> records = mongoTemplate.find(query, ArticleDoc.class)
-                .stream().map(this::toCard).collect(Collectors.toList());
-        PageVO<ArticleCardVO> vo = new PageVO<>();
-        vo.setRecords(records);
-        vo.setTotal(total);
-        vo.setPage(page);
-        vo.setSize(limit);
-        return vo;
-    }
-
-    private ArticleCardVO toCard(ArticleDoc article) {
+    private ArticleCardVO toCard(Article article) {
         ArticleCardVO vo = new ArticleCardVO();
         BeanUtils.copyProperties(article, vo);
         vo.setPinned(article.getPinned() != null && article.getPinned() == 1);
         vo.setCategoryName(categoryName(article.getCategoryId()));
-        vo.setTags(findTagsOf(article.getTags()));
+        vo.setTags(findTagsOf(article.getId()));
         Map<Long, UserCardVO> cards = userCardService.getCards(List.of(article.getAuthorId()));
         vo.setAuthor(cards.get(article.getAuthorId()));
         return vo;
@@ -351,52 +342,36 @@ public class ArticleServiceImpl implements ArticleService {
         if (categoryId == null) {
             return "未分类";
         }
-        CategoryDoc category = mongoTemplate.findById(categoryId, CategoryDoc.class);
+        Category category = categoryMapper.selectById(categoryId);
         return category == null ? "未分类" : category.getName();
     }
 
-    private List<TagVO> findTagsOf(List<Long> tagIds) {
-        if (tagIds == null || tagIds.isEmpty()) {
+    private List<TagVO> findTagsOf(Long articleId) {
+        List<Long> tagIds = articleTagMapper.selectList(Wrappers.<ArticleTag>lambdaQuery()
+                        .eq(ArticleTag::getArticleId, articleId))
+                .stream().map(ArticleTag::getTagId).toList();
+        if (tagIds.isEmpty()) {
             return List.of();
         }
-        return mongoTemplate.find(Query.query(Criteria.where("_id").in(tagIds)), TagDoc.class)
-                .stream().map(t -> {
-                    TagVO vo = new TagVO();
-                    vo.setId(t.getId());
-                    vo.setName(t.getName());
-                    vo.setColor(t.getColor());
-                    return vo;
-                }).collect(Collectors.toList());
+        return tagMapper.selectBatchIds(tagIds).stream().map(t -> {
+            TagVO vo = new TagVO();
+            vo.setId(t.getId());
+            vo.setName(t.getName());
+            vo.setColor(t.getColor());
+            return vo;
+        }).collect(Collectors.toList());
     }
 
-    /** 标签不存在则创建（默认色），返回标签 ID */
     private Long upsertTag(String name) {
-        TagDoc tag = mongoTemplate.findOne(Query.query(Criteria.where("name").is(name)), TagDoc.class);
+        Tag tag = tagMapper.selectOne(Wrappers.<Tag>lambdaQuery().eq(Tag::getName, name).last("LIMIT 1"));
         if (tag != null) {
             return tag.getId();
         }
-        tag = new TagDoc();
-        tag.setId(IdUtil.getSnowflakeNextId());
+        tag = new Tag();
         tag.setName(name);
         tag.setColor("#e8639a");
-        tag.setCreatedAt(LocalDateTime.now());
-        tag.setUpdatedAt(LocalDateTime.now());
-        try {
-            mongoTemplate.insert(tag);
-        } catch (org.springframework.dao.DuplicateKeyException e) {
-            // 并发下同名标签被抢先创建，取已有的
-            return mongoTemplate.findOne(Query.query(Criteria.where("name").is(name)), TagDoc.class).getId();
-        }
+        tagMapper.insert(tag);
         return tag.getId();
-    }
-
-    /** LIKE '%kw%' 等价的忽略大小写正则 */
-    private Pattern like(String keyword) {
-        return Pattern.compile(Pattern.quote(keyword), Pattern.CASE_INSENSITIVE);
-    }
-
-    private long countCollection(String collection) {
-        return mongoTemplate.count(new Query(), collection);
     }
 
     private String plainText(String markdown) {

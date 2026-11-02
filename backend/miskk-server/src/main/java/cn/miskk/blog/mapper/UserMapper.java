@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
- * 用户 Mapper（MySQL 基础库 miskk_base）。
+ * 用户 Mapper（PostgreSQL 单库 miskk_blog）。
  */
 @Mapper
 public interface UserMapper extends BaseMapper<User> {

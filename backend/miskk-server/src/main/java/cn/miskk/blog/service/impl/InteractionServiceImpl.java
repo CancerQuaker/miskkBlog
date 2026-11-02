@@ -1,24 +1,24 @@
 package cn.miskk.blog.service.impl;
 
-import cn.hutool.core.util.IdUtil;
-import cn.miskk.blog.common.exception.BizException;
-import cn.miskk.blog.document.ArticleDoc;
-import cn.miskk.blog.document.ShareLogDoc;
-import cn.miskk.blog.document.WatchRecordDoc;
+import cn.miskk.blog.entity.Article;
+import cn.miskk.blog.entity.ShareLog;
+import cn.miskk.blog.entity.WatchRecord;
+import cn.miskk.blog.mapper.ArticleMapper;
+import cn.miskk.blog.mapper.ShareLogMapper;
+import cn.miskk.blog.mapper.WatchRecordMapper;
 import cn.miskk.blog.service.InteractionService;
+import cn.miskk.blog.common.exception.BizException;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Set;
 
 /**
- * 互动服务实现（MongoDB）：分享日志 / 在线观看时长（按访客+日期聚合）。
+ * 互动服务实现。
  */
 @Service
 @RequiredArgsConstructor
@@ -26,64 +26,66 @@ public class InteractionServiceImpl implements InteractionService {
 
     private static final Set<String> CHANNELS = Set.of("qq", "wechat", "copy");
 
-    private final MongoTemplate mongoTemplate;
+    private final ArticleMapper articleMapper;
+    private final ShareLogMapper shareLogMapper;
+    private final WatchRecordMapper watchRecordMapper;
 
     @Override
+    @Transactional
     public boolean share(Long articleId, String channel, Long userId) {
         if (channel == null || !CHANNELS.contains(channel.toLowerCase())) {
             throw new BizException("不支持的分享渠道");
         }
-        ArticleDoc article = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(articleId)
-                .and("deleted").ne(true)), ArticleDoc.class);
+        Article article = articleMapper.selectById(articleId);
         if (article == null || article.getStatus() != 1) {
             throw new BizException("文章不存在或未发布");
         }
 
-        ShareLogDoc log = new ShareLogDoc();
-        log.setId(IdUtil.getSnowflakeNextId());
+        ShareLog log = new ShareLog();
         log.setArticleId(articleId);
         log.setUserId(userId);
         log.setChannel(channel.toLowerCase());
-        log.setCreatedAt(LocalDateTime.now());
-        mongoTemplate.insert(log);
+        shareLogMapper.insert(log);
 
-        mongoTemplate.updateFirst(Query.query(Criteria.where("_id").is(articleId)),
-                new Update().inc("shares", 1), ArticleDoc.class);
+        Article update = new Article();
+        update.setId(articleId);
+        update.setShares((article.getShares() == null ? 0 : article.getShares()) + 1);
+        articleMapper.updateById(update);
         return true;
     }
 
     @Override
+    @Transactional
     public void watch(Long articleId, int seconds, Long userId, String visitorKey) {
-        ArticleDoc article = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(articleId)
-                .and("deleted").ne(true)), ArticleDoc.class);
+        Article article = articleMapper.selectById(articleId);
         if (article == null) {
             throw new BizException("文章不存在");
         }
 
         LocalDate today = LocalDate.now();
-        LocalDateTime now = LocalDateTime.now();
-        Criteria identity = userId != null
-                ? Criteria.where("articleId").is(articleId).and("watchDate").is(today).and("userId").is(userId)
-                : Criteria.where("articleId").is(articleId).and("watchDate").is(today).and("visitorKey").is(visitorKey);
-        WatchRecordDoc record = mongoTemplate.findOne(Query.query(identity).limit(1), WatchRecordDoc.class);
+        WatchRecord record = watchRecordMapper.selectOne(Wrappers.<WatchRecord>lambdaQuery()
+                .eq(WatchRecord::getArticleId, articleId)
+                .eq(WatchRecord::getWatchDate, today)
+                .eq(userId != null, WatchRecord::getUserId, userId)
+                .eq(userId == null, WatchRecord::getVisitorKey, visitorKey)
+                .last("LIMIT 1"));
 
         if (record == null) {
-            record = new WatchRecordDoc();
-            record.setId(IdUtil.getSnowflakeNextId());
+            record = new WatchRecord();
             record.setArticleId(articleId);
             record.setUserId(userId);
             record.setVisitorKey(userId == null ? visitorKey : null);
             record.setSeconds((long) seconds);
             record.setWatchDate(today);
-            record.setCreatedAt(now);
-            record.setUpdatedAt(now);
-            mongoTemplate.insert(record);
+            watchRecordMapper.insert(record);
         } else {
-            mongoTemplate.updateFirst(Query.query(Criteria.where("_id").is(record.getId())),
-                    new Update().inc("seconds", seconds).set("updatedAt", now), WatchRecordDoc.class);
+            record.setSeconds(record.getSeconds() + seconds);
+            watchRecordMapper.updateById(record);
         }
 
-        mongoTemplate.updateFirst(Query.query(Criteria.where("_id").is(articleId)),
-                new Update().inc("watchSeconds", seconds), ArticleDoc.class);
+        Article update = new Article();
+        update.setId(articleId);
+        update.setWatchSeconds((article.getWatchSeconds() == null ? 0 : article.getWatchSeconds()) + seconds);
+        articleMapper.updateById(update);
     }
 }

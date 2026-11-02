@@ -22,7 +22,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 友链服务实现（MySQL 基础库 miskk_base，事务由 Spring 默认数据源事务管理器管理）。
+ * 友链服务实现（PostgreSQL 单库 miskk_blog，事务由 Spring 默认数据源事务管理器管理）。
  */
 @Service
 @RequiredArgsConstructor
