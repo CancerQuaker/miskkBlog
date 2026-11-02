@@ -21,7 +21,6 @@ import cn.miskk.blog.service.MailService;
 import cn.miskk.blog.service.UserService;
 import cn.miskk.blog.common.vo.LoginVO;
 import cn.miskk.blog.common.vo.UserVO;
-import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,14 +38,10 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 用户服务实现。
- * <p>
- * 用户业务统一路由到 user 库（miskk_user）；@DS 切面优先级高于事务切面，
- * 保证后续若加 {@code @Transactional} 也绑定 user 连接。
+ * 用户服务实现（MySQL 基础库 miskk_base）。
  */
 @Slf4j
 @Service
-@DS("user")
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 

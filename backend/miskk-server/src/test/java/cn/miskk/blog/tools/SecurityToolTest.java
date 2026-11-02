@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * 安全工具型单元测试：
  * <ul>
- *   <li>密码哈希：生成 BCrypt 哈希（用于 sql/01_miskk_user.sql 管理员密码种子）；</li>
+ *   <li>密码哈希：生成 BCrypt 哈希（用于 sql/01_user.sql 管理员密码种子）；</li>
  *   <li>登录 token：JWT 签发与解析验签。</li>
  * </ul>
  * <p>

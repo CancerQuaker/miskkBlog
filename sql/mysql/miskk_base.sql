@@ -1,12 +1,16 @@
 -- ============================================================
--- 迷失客客の博客 - 用户库
+-- 迷失客客の博客 - 基础库 miskk_base（MySQL：用户 / 友链）
 -- ============================================================
+-- 文章/分类/标签/评论/互动数据在 MongoDB（见 sql/mongo/miskk_article.js）
+--
 -- 声明连接字符集：MySQL 容器内客户端 locale 为 C 时会回退 latin1，
 -- 中文种子数据会被按 latin1 双重编码落库成乱码，SET NAMES 对已是
 -- utf8mb4 的连接（Navicat/IDEA 等）无副作用
 SET NAMES utf8mb4;
-CREATE DATABASE IF NOT EXISTS `miskk_user` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE `miskk_user`;
+CREATE DATABASE IF NOT EXISTS `miskk_base` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `miskk_base`;
+
+-- ---------------------------- 用户 ----------------------------
 
 CREATE TABLE IF NOT EXISTS `t_user` (
     `id`            BIGINT       NOT NULL AUTO_INCREMENT COMMENT '用户ID',
@@ -39,7 +43,7 @@ ON DUPLICATE KEY UPDATE `username` = `username`;
 
 -- 演示用户种子：密码统一 admin123（复用管理员 BCrypt 哈希，见 sql/README 说明）。
 -- id 从 11 起，避开线上可能已注册的真实用户（AUTO_INCREMENT 自然增长区）；
--- miskk_article.t_comment 的种子评论引用这些 id；头像按昵称对应 public/chibi 的 Q 版角色贴纸
+-- MongoDB 种子评论引用这些 id；头像按昵称对应 public/chibi 的 Q 版角色贴纸
 INSERT INTO `t_user` (`id`, `username`, `password`, `nickname`, `email`, `avatar`, `bio`, `role`, `status`, `last_login_at`, `created_at`)
 VALUES (11, 'xiaoxing', '$2a$10$XPg5sck5VLn2EB0mcKIHt.zTyRZJihfTvLVbM6nt8a/wlzb7.F4GC', '小星尘', 'xiaoxing@miskk.cn', '/chibi/firefly.png',
         '星星光标中毒用户，左键星爆根本停不下来', 0, 0, NOW() - INTERVAL 1 DAY, NOW() - INTERVAL 62 DAY),
@@ -52,3 +56,43 @@ VALUES (11, 'xiaoxing', '$2a$10$XPg5sck5VLn2EB0mcKIHt.zTyRZJihfTvLVbM6nt8a/wlzb7
        (15, 'yinlang', '$2a$10$XPg5sck5VLn2EB0mcKIHt.zTyRZJihfTvLVbM6nt8a/wlzb7.F4GC', '银狼', 'yinlang@miskk.cn', '/chibi/silverwolf.png',
         '随便逛逛，别在意', 0, 0, NOW() - INTERVAL 5 DAY, NOW() - INTERVAL 21 DAY)
 ON DUPLICATE KEY UPDATE `username` = `username`;
+
+-- ---------------------------- 友链 ----------------------------
+
+CREATE TABLE IF NOT EXISTS `t_friend_link` (
+    `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '友链ID',
+    `name`        VARCHAR(32)  NOT NULL COMMENT '站点名称',
+    `avatar`      VARCHAR(255) NULL COMMENT '站点头像',
+    `url`         VARCHAR(255) NOT NULL COMMENT '站点链接',
+    `description` VARCHAR(100) NULL COMMENT '站点描述',
+    `status`      TINYINT      NOT NULL DEFAULT 0 COMMENT '0 待审核 1 已通过 2 已驳回',
+    `sort`        INT          NOT NULL DEFAULT 99 COMMENT '排序（越小越靠前）',
+    `created_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_status` (`status`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT ='友链';
+
+CREATE TABLE IF NOT EXISTS `t_friend_apply` (
+    `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '申请ID',
+    `name`        VARCHAR(32)  NOT NULL COMMENT '站点名称',
+    `avatar`      VARCHAR(255) NULL COMMENT '站点头像',
+    `url`         VARCHAR(255) NOT NULL COMMENT '站点链接',
+    `description` VARCHAR(100) NULL COMMENT '站点描述',
+    `contact`     VARCHAR(64)  NOT NULL COMMENT '联系方式',
+    `reason`      VARCHAR(200) NULL COMMENT '申请说明',
+    `status`      TINYINT      NOT NULL DEFAULT 0 COMMENT '0 待审核 1 通过 2 驳回',
+    `review_note` VARCHAR(200) NULL COMMENT '审核备注',
+    `reviewed_at` DATETIME     NULL COMMENT '审核时间',
+    `link_id`     BIGINT       NULL COMMENT '通过后生成的友链ID',
+    `created_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_status` (`status`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT ='友链申请';
+
+-- 种子友链
+INSERT INTO `t_friend_link` (`id`, `name`, `avatar`, `url`, `description`, `status`, `sort`) VALUES
+    (1, 'CuteLeaf 的博客', 'https://blog.cuteleaf.cn/favicon.ico', 'https://blog.cuteleaf.cn/', 'Astro 主题 Firefly 作者', 1, 1),
+    (2, 'Fuwari', 'https://github.com/saicaca.png', 'https://github.com/saicaca/fuwari', '清新圆润的 Astro 博客模板', 1, 2)
+ON DUPLICATE KEY UPDATE `name` = VALUES(`name`);

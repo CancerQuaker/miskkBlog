@@ -11,7 +11,6 @@ import cn.miskk.blog.common.entity.FriendLink;
 import cn.miskk.blog.mapper.FriendApplyMapper;
 import cn.miskk.blog.mapper.FriendLinkMapper;
 import cn.miskk.blog.service.FriendService;
-import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
@@ -23,13 +22,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 友链服务实现。
- * <p>
- * 本应用为三数据源（article 主库 + user 库 + friend 库），友链业务统一路由到 friend 库；
- * @DS 切面优先级高于事务切面，保证 {@code @Transactional} 事务绑定 friend 连接。
+ * 友链服务实现（MySQL 基础库 miskk_base，事务由 Spring 默认数据源事务管理器管理）。
  */
 @Service
-@DS("friend")
 @RequiredArgsConstructor
 public class FriendServiceImpl implements FriendService {
 

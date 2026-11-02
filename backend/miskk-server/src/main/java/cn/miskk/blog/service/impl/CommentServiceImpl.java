@@ -1,57 +1,58 @@
 package cn.miskk.blog.service.impl;
 
-import cn.miskk.blog.entity.Article;
-import cn.miskk.blog.entity.Comment;
-import cn.miskk.blog.mapper.ArticleMapper;
-import cn.miskk.blog.mapper.CommentMapper;
-import cn.miskk.blog.service.CommentService;
-import cn.miskk.blog.service.UserCardService;
-import cn.miskk.blog.common.vo.CommentVO;
+import cn.hutool.core.util.IdUtil;
 import cn.miskk.blog.common.api.PageVO;
 import cn.miskk.blog.common.auth.LoginUser;
 import cn.miskk.blog.common.dto.UserCardVO;
 import cn.miskk.blog.common.exception.BizException;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import cn.miskk.blog.common.vo.CommentVO;
+import cn.miskk.blog.document.ArticleDoc;
+import cn.miskk.blog.document.CommentDoc;
+import cn.miskk.blog.service.CommentService;
+import cn.miskk.blog.service.UserCardService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 /**
- * 评论服务实现：两级楼层数据（顶级评论分页 + 楼中楼平铺）。
+ * 评论服务实现（MongoDB）：两级楼层数据（顶级评论分页 + 楼中楼平铺）。
  */
 @Service
 @RequiredArgsConstructor
 public class CommentServiceImpl implements CommentService {
 
-    private final CommentMapper commentMapper;
-    private final ArticleMapper articleMapper;
+    private final MongoTemplate mongoTemplate;
     private final UserCardService userCardService;
 
     @Override
     public PageVO<CommentVO> pageByArticle(Long articleId, long page, long size) {
-        Page<Comment> p = new Page<>(page, Math.min(size, 20));
-        Page<Comment> topPage = commentMapper.selectPage(p, Wrappers.<Comment>lambdaQuery()
-                .eq(Comment::getArticleId, articleId)
-                .isNull(Comment::getParentId)
-                .orderByDesc(Comment::getCreatedAt));
+        int limit = (int) Math.min(size, 20);
+        Criteria topCriteria = Criteria.where("deleted").ne(true)
+                .and("articleId").is(articleId)
+                .and("parentId").is(null);
+        Query topQuery = Query.query(topCriteria)
+                .skip((page - 1) * limit).limit(limit)
+                .with(Sort.by(Sort.Order.desc("createdAt")));
+        long total = mongoTemplate.count(Query.query(topCriteria), CommentDoc.class);
+        List<CommentDoc> tops = mongoTemplate.find(topQuery, CommentDoc.class);
 
-        List<Comment> tops = topPage.getRecords();
         List<CommentVO> topVos = new ArrayList<>();
         if (!tops.isEmpty()) {
-            List<Long> topIds = tops.stream().map(Comment::getId).toList();
-            List<Comment> children = commentMapper.selectList(Wrappers.<Comment>lambdaQuery()
-                    .eq(Comment::getArticleId, articleId)
-                    .in(Comment::getParentId, topIds)
-                    .orderByAsc(Comment::getCreatedAt));
+            List<Long> topIds = tops.stream().map(CommentDoc::getId).toList();
+            List<CommentDoc> children = mongoTemplate.find(Query.query(Criteria.where("deleted").ne(true)
+                            .and("articleId").is(articleId)
+                            .and("parentId").in(topIds))
+                    .with(Sort.by(Sort.Order.asc("createdAt"))), CommentDoc.class);
 
             // 组装用户名片
             List<Long> userIds = new ArrayList<>();
@@ -65,11 +66,11 @@ public class CommentServiceImpl implements CommentService {
             Map<Long, UserCardVO> cards = userCardService.getCards(userIds);
 
             Map<Long, List<CommentVO>> childrenMap = new HashMap<>();
-            for (Comment child : children) {
+            for (CommentDoc child : children) {
                 CommentVO vo = toVO(child, cards);
                 childrenMap.computeIfAbsent(child.getParentId(), k -> new ArrayList<>()).add(vo);
             }
-            for (Comment top : tops) {
+            for (CommentDoc top : tops) {
                 CommentVO vo = toVO(top, cards);
                 vo.setChildren(childrenMap.getOrDefault(top.getId(), List.of()));
                 topVos.add(vo);
@@ -78,26 +79,29 @@ public class CommentServiceImpl implements CommentService {
 
         PageVO<CommentVO> vo = new PageVO<>();
         vo.setRecords(topVos);
-        vo.setTotal(topPage.getTotal());
-        vo.setPage(topPage.getCurrent());
-        vo.setSize(topPage.getSize());
+        vo.setTotal(total);
+        vo.setPage(page);
+        vo.setSize(limit);
         return vo;
     }
 
     @Override
-    @Transactional
     public CommentVO create(Long articleId, Long userId, String content, Long parentId, Long replyUserId) {
-        Article article = articleMapper.selectById(articleId);
+        ArticleDoc article = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(articleId)
+                .and("deleted").ne(true)), ArticleDoc.class);
         if (article == null || article.getStatus() != 1) {
             throw new BizException("文章不存在或未发布");
         }
 
-        Comment comment = new Comment();
+        LocalDateTime now = LocalDateTime.now();
+        CommentDoc comment = new CommentDoc();
+        comment.setId(IdUtil.getSnowflakeNextId());
         comment.setArticleId(articleId);
         comment.setUserId(userId);
         comment.setContent(content);
         if (parentId != null) {
-            Comment parent = commentMapper.selectById(parentId);
+            CommentDoc parent = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(parentId)
+                    .and("deleted").ne(true)), CommentDoc.class);
             if (parent == null || !parent.getArticleId().equals(articleId)) {
                 throw new BizException("要回复的评论不存在");
             }
@@ -109,13 +113,12 @@ public class CommentServiceImpl implements CommentService {
         } else {
             comment.setReplyUserId(replyUserId);
         }
-        comment.setDeleted(0);
-        commentMapper.insert(comment);
+        comment.setDeleted(false);
+        comment.setCreatedAt(now);
+        comment.setUpdatedAt(now);
+        mongoTemplate.insert(comment);
 
-        Article update = new Article();
-        update.setId(articleId);
-        update.setComments((article.getComments() == null ? 0 : article.getComments()) + 1);
-        articleMapper.updateById(update);
+        incArticleCounter(articleId, "comments", 1);
 
         List<Long> cardIds = new ArrayList<>();
         cardIds.add(userId);
@@ -127,9 +130,9 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
-    @Transactional
     public void delete(Long commentId, LoginUser user) {
-        Comment comment = commentMapper.selectById(commentId);
+        CommentDoc comment = mongoTemplate.findOne(Query.query(Criteria.where("_id").is(commentId)
+                .and("deleted").ne(true)), CommentDoc.class);
         if (comment == null) {
             throw new BizException("评论不存在");
         }
@@ -138,27 +141,36 @@ public class CommentServiceImpl implements CommentService {
             throw new BizException("只能删除自己的评论");
         }
 
+        LocalDateTime now = LocalDateTime.now();
+        Update logicDelete = new Update().set("deleted", true).set("updatedAt", now);
         long removed = 1;
         if (comment.getParentId() == null) {
-            List<Comment> children = commentMapper.selectList(Wrappers.<Comment>lambdaQuery()
-                    .eq(Comment::getParentId, commentId));
-            for (Comment child : children) {
-                commentMapper.deleteById(child.getId());
+            List<CommentDoc> children = mongoTemplate.find(Query.query(Criteria.where("parentId").is(commentId)
+                    .and("deleted").ne(true)), CommentDoc.class);
+            for (CommentDoc child : children) {
+                mongoTemplate.updateFirst(Query.query(Criteria.where("_id").is(child.getId())), logicDelete, CommentDoc.class);
             }
             removed += children.size();
         }
-        commentMapper.deleteById(commentId);
+        mongoTemplate.updateFirst(Query.query(Criteria.where("_id").is(commentId)), logicDelete, CommentDoc.class);
 
-        Article article = articleMapper.selectById(comment.getArticleId());
-        if (article != null) {
-            Article update = new Article();
-            update.setId(article.getId());
-            update.setComments(Math.max(0, (article.getComments() == null ? 0 : article.getComments()) - removed));
-            articleMapper.updateById(update);
+        if (articleExists(comment.getArticleId())) {
+            incArticleCounter(comment.getArticleId(), "comments", -removed);
         }
     }
 
-    private CommentVO toVO(Comment comment, Map<Long, UserCardVO> cards) {
+    private boolean articleExists(Long articleId) {
+        return mongoTemplate.exists(Query.query(Criteria.where("_id").is(articleId)
+                .and("deleted").ne(true)), ArticleDoc.class);
+    }
+
+    /** 文章计数原子增减（负数减少） */
+    private void incArticleCounter(Long articleId, String field, long delta) {
+        mongoTemplate.updateFirst(Query.query(Criteria.where("_id").is(articleId).and("deleted").ne(true)),
+                new Update().inc(field, delta), ArticleDoc.class);
+    }
+
+    private CommentVO toVO(CommentDoc comment, Map<Long, UserCardVO> cards) {
         CommentVO vo = new CommentVO();
         vo.setId(comment.getId());
         vo.setArticleId(comment.getArticleId());

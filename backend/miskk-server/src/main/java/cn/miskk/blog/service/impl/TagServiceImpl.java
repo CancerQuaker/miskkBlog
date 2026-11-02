@@ -1,15 +1,14 @@
 package cn.miskk.blog.service.impl;
 
-import cn.miskk.blog.entity.ArticleTag;
-import cn.miskk.blog.entity.Tag;
-import cn.miskk.blog.mapper.ArticleMapper;
-import cn.miskk.blog.mapper.ArticleTagMapper;
-import cn.miskk.blog.mapper.TagMapper;
-import cn.miskk.blog.service.TagService;
 import cn.miskk.blog.common.vo.TagVO;
-import cn.miskk.blog.common.exception.BizException;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import cn.miskk.blog.document.ArticleDoc;
+import cn.miskk.blog.document.TagDoc;
+import cn.miskk.blog.service.TagService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,22 +16,24 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * 标签服务实现。
+ * 标签服务实现（MongoDB）：标签列表 + 引用文章数（未删除文章的 tags 数组展开统计）。
  */
 @Service
 @RequiredArgsConstructor
 public class TagServiceImpl implements TagService {
 
-    private final TagMapper tagMapper;
-    private final ArticleTagMapper articleTagMapper;
-    private final ArticleMapper articleMapper;
+    private final MongoTemplate mongoTemplate;
 
     @Override
     public List<TagVO> listWithCount() {
-        Map<Long, Long> counts = articleTagMapper.selectList(Wrappers.<ArticleTag>lambdaQuery())
-                .stream().collect(Collectors.groupingBy(ArticleTag::getTagId, Collectors.counting()));
+        Query tagsQuery = Query.query(Criteria.where("deleted").ne(true));
+        tagsQuery.fields().include("tags");
+        Map<Long, Long> counts = mongoTemplate.find(tagsQuery, ArticleDoc.class)
+                .stream()
+                .flatMap(a -> a.getTags() == null ? java.util.stream.Stream.<Long>empty() : a.getTags().stream())
+                .collect(Collectors.groupingBy(t -> t, Collectors.counting()));
 
-        return tagMapper.selectList(Wrappers.<Tag>lambdaQuery().orderByDesc(Tag::getId))
+        return mongoTemplate.find(new Query().with(Sort.by(Sort.Order.desc("_id"))), TagDoc.class)
                 .stream().map(t -> {
                     TagVO vo = new TagVO();
                     vo.setId(t.getId());
@@ -41,30 +42,5 @@ public class TagServiceImpl implements TagService {
                     vo.setArticleCount(counts.getOrDefault(t.getId(), 0L));
                     return vo;
                 }).toList();
-    }
-
-    @Override
-    public Tag create(Tag tag) {
-        Long count = tagMapper.selectCount(Wrappers.<Tag>lambdaQuery().eq(Tag::getName, tag.getName()));
-        if (count != null && count > 0) {
-            throw new BizException("标签已存在");
-        }
-        tagMapper.insert(tag);
-        return tag;
-    }
-
-    @Override
-    public Tag update(Tag tag) {
-        if (tagMapper.selectById(tag.getId()) == null) {
-            throw new BizException("标签不存在");
-        }
-        tagMapper.updateById(tag);
-        return tag;
-    }
-
-    @Override
-    public void delete(Long id) {
-        articleTagMapper.delete(Wrappers.<ArticleTag>lambdaQuery().eq(ArticleTag::getTagId, id));
-        tagMapper.deleteById(id);
     }
 }
