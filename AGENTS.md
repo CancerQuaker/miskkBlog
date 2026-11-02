@@ -29,9 +29,10 @@ npm run build                     # tsc -b && vite build，类型检查也走这
 cd frontend && npm run build && tar.exe -a -cf dist.zip dist
 unzip -o dist.zip                  # 服务器上解压（-o 覆盖旧文件），得到 dist/ 目录
 
-# 单元测试（工具型：密码哈希 / 登录 token）
+# 单元测试（工具型：密码哈希 / JWT 密钥 / 登录 token）
 mvn -pl backend/miskk-server test
 mvn -pl backend/miskk-server test -Dtest=SecurityToolTest#generatePasswordHash    # 生成 BCrypt 密码哈希（写入 SQL 种子）
+mvn -pl backend/miskk-server test -Dtest=SecurityToolTest#generateJwtSecret       # 生成随机 JWT_SECRET（写入环境变量 / docker/.env）
 ```
 
 `SecurityToolTest` 之外暂无测试；整包构建仍带 `-DskipTests`。
