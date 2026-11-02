@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 
 if [ ! -f .env ]; then
   cp .env.example .env
-  echo "已生成 docker/.env，请修改其中的 MYSQL_PASSWORD / JWT_SECRET / INTERNAL_TOKEN 后重新执行本脚本。"
+  echo "已生成 docker/.env，请修改其中的 MYSQL_PASSWORD / JWT_SECRET 后重新执行本脚本。"
   exit 1
 fi
 
