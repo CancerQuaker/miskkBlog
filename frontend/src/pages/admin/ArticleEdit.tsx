@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Button, Card, Col, Form, Input, Row, Select, Space, Spin, Switch, Upload, message,
 } from 'antd';
-import { PlusOutlined, PictureOutlined, SendOutlined, SaveOutlined } from '@ant-design/icons';
-import MDEditor from '@uiw/react-md-editor';
+import { PictureOutlined, SendOutlined, SaveOutlined } from '@ant-design/icons';
+import MarkdownEditor, { MarkdownEditorHandle } from '../../components/MarkdownEditor';
 import { articleApi, CategoryVO, adminArticleApi, ArticleDetail } from '../../api/article';
 
 /**
@@ -15,6 +15,7 @@ export default function ArticleEdit() {
   const [params] = useSearchParams();
   const id = params.get('id');
   const [form] = Form.useForm();
+  const editorRef = useRef<MarkdownEditorHandle>(null);
   const [content, setContent] = useState('');
   const [categories, setCategories] = useState<CategoryVO[]>([]);
   const [tagOptions, setTagOptions] = useState<{ label: string; value: string }[]>([]);
@@ -51,11 +52,12 @@ export default function ArticleEdit() {
 
   const save = async (status: number) => {
     const values = await form.validateFields();
+    const latestContent = editorRef.current?.getValue() ?? content;
     setSaving(true);
     try {
       const payload = {
         ...values,
-        content,
+        content: latestContent,
         cover: cover || undefined,
         status,
         pinned: !!values.pinned,
@@ -67,6 +69,8 @@ export default function ArticleEdit() {
         await adminArticleApi.create(payload);
         message.success(status === 1 ? '发布成功捏~' : '已保存为草稿');
       }
+      setContent(latestContent);
+      editorRef.current?.clearCache();
       navigate('/admin/article');
     } finally {
       setSaving(false);
@@ -122,16 +126,15 @@ export default function ArticleEdit() {
         </Form.Item>
       </Form>
 
-      <div style={{ marginBottom: 8, color: 'var(--text-sub)' }}>正文（Markdown）</div>
-      <div data-color-mode="light">
-        <MDEditor
-          value={content}
-          onChange={(v) => setContent(v || '')}
-          height={520}
-          preview="edit"
-          extraCommands={[]}
-        />
-      </div>
+      <div style={{ marginBottom: 8, color: 'var(--text-sub)' }}>正文（Markdown，支持即时渲染与图片粘贴上传）</div>
+      <MarkdownEditor
+        key={id || 'new'}
+        ref={editorRef}
+        initialValue={content}
+        onChange={setContent}
+        onUpload={articleApi.uploadImage}
+        cacheKey={id ? `article-${id}` : 'article-new'}
+      />
 
       <div style={{ marginTop: 16, textAlign: 'right' }}>
         <Space>

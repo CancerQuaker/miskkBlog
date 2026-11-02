@@ -53,11 +53,14 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(fun
     };
     const observer = new MutationObserver(applyTheme);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    const mount = document.createElement('div');
+    container.replaceChildren(mount);
 
-    const editor = new Vditor(container, {
+    const editor = new Vditor(mount, {
       value: initialValueRef.current,
       mode: 'ir',
       lang: 'zh_CN',
+      cdn: '/vditor',
       icon: 'ant',
       height: 620,
       minHeight: 480,
@@ -105,8 +108,12 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(fun
         },
       },
       after: () => {
-        if (!active) return;
         ready = true;
+        if (!active) {
+          destroyEditor();
+          return;
+        }
+        editorRef.current = editor;
         applyTheme();
         onChangeRef.current(editor.getValue());
       },
@@ -114,14 +121,18 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(fun
         if (active) onChangeRef.current(value);
       },
     });
-    editorRef.current = editor;
+
+    const destroyEditor = () => {
+      editor.disabledCache();
+      editor.destroy();
+      if (editorRef.current === editor) editorRef.current = null;
+    };
 
     return () => {
       active = false;
-      ready = false;
       observer.disconnect();
-      editor.destroy();
-      if (editorRef.current === editor) editorRef.current = null;
+      if (ready) destroyEditor();
+      ready = false;
     };
   }, [cacheKey]);
 
