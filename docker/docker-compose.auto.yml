@@ -3,13 +3,13 @@
 # 用法（服务器上）：
 #   git clone https://github.com/CancerQuaker/miskkBlog.git
 #   cd miskkBlog/docker
-#   cp .env.example .env    # 必填 MYSQL_PASSWORD / JWT_SECRET，其余可选变量见文件内说明
+#   cp .env.example .env    # 必填 POSTGRES_PASSWORD / JWT_SECRET，其余可选变量见文件内说明
 #   bash deploy.sh          # 等价于 docker compose -f docker-compose.auto.yml up -d --build
 #
-# 安全模型：默认只有 nginx 对外（SITE_PORT，默认 80），MySQL/Redis/MongoDB/后端都只在 compose 内部网络可达，
-# 云服务器安全组只需放行 80/443。MySQL/Redis/MongoDB 的宿主机映射以注释形式预留（见各服务 ports）。
-# 数据落盘：mysql-data / redis-data 卷 + ./uploads/（上传图片），备份这三处即可。
-# 内存建议 2核2G 起步；更小的机器可在 .env 设置 JAVA_TOOL_OPTIONS=-Xmx256m。
+# 安全模型：默认只有 nginx 对外（SITE_PORT，默认 80），PostgreSQL/Redis/后端都只在 compose 内部网络可达，
+# 云服务器安全组只需放行 80/443。PostgreSQL/Redis 的宿主机映射以注释形式预留（见各服务 ports）。
+# 数据落盘：pg-data / redis-data 卷 + ./uploads/（上传图片），备份这三处即可。
+# 内存建议 2核2G 起步（基线 app 512m + PostgreSQL 384m + Redis 64m ≈ 1G）；更小的机器可设 JAVA_TOOL_OPTIONS=-Xmx256m。
 #
 # 本机已构建好前后端产物（backend/miskk-server/target/*.jar 与 frontend/dist）、想跳过容器内编译
 # 直接挂载启动同一套全栈，请用同目录的 docker-compose.yml（同一份 .env 通用）。
@@ -21,10 +21,9 @@ x-backend-env: &backend-env
   TZ: ${TZ:-Asia/Shanghai}
   # 小内存机器可在 .env 设置 JAVA_TOOL_OPTIONS=-Xmx256m
   JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:-}
-  MYSQL_ADDR: mysql:${MYSQL_SERVER_PORT:-3306}
-  MYSQL_USER: ${MYSQL_USER:-root}
-  MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 docker/.env 中设置 MYSQL_PASSWORD}
-  MONGO_ADDR: mongo:${MONGO_SERVER_PORT:-27017}
+  POSTGRES_ADDR: db:${POSTGRES_SERVER_PORT:-5432}
+  POSTGRES_USER: ${POSTGRES_USER:-miskk}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 docker/.env 中设置 POSTGRES_PASSWORD}
   REDIS_HOST: redis
   REDIS_PORT: ${REDIS_SERVER_PORT:-6379}
   REDIS_PASSWORD: ${REDIS_PASSWORD:-}
@@ -36,23 +35,23 @@ x-backend-env: &backend-env
   GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
 
 services:
-  mysql:
-    image: mysql:8.4
-    container_name: miskk-mysql
+  # ---- PostgreSQL：全站唯一数据库（miskk_blog，全部表统一存放） ----
+  db:
+    image: postgres:18-alpine
+    container_name: miskk-pg
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:?请在 docker/.env 中设置 MYSQL_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER:-miskk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 docker/.env 中设置 POSTGRES_PASSWORD}
+      POSTGRES_DB: miskk_blog
       TZ: ${TZ:-Asia/Shanghai}
-    # 宿主机端口映射默认不开放（安全模型）；需要时取消注释（MYSQL_PORT=宿主机 / MYSQL_SERVER_PORT=容器内，见 .env）
-    #ports:
-    #  - "${MYSQL_PORT:-3306}:${MYSQL_SERVER_PORT:-3306}"
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    command: ["postgres", "-c", "shared_buffers=128MB", "-c", "max_connections=60"]
     volumes:
-      - mysql-data:/var/lib/mysql
-      - ../sql/mysql:/docker-entrypoint-initdb.d:ro   # 首次启动自动执行基础库建表脚本（用户/友链）
-    # 容器内端口改动会经 MYSQL_ADDR 同步到后端连接串
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --port=${MYSQL_SERVER_PORT:-3306}
+      - pg-data:/var/lib/postgresql/data
+      - ../sql:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-miskk} -d miskk_blog"]
       interval: 5s
       retries: 12
 
@@ -68,24 +67,6 @@ services:
     #  - "${REDIS_PORT:-6379}:${REDIS_SERVER_PORT:-6379}"
     volumes:
       - redis-data:/data
-
-  mongo:
-    image: mongo:8
-    container_name: miskk-mongo
-    restart: unless-stopped
-    environment:
-      TZ: ${TZ:-Asia/Shanghai}
-      # 首次启动（空数据卷）自动执行文章库种子脚本
-      MONGO_INITDB_DATABASE: miskk_article
-    command: ["mongod", "--wiredTigerCacheSizeGB", "0.25", "--port", "${MONGO_SERVER_PORT:-27017}"]
-    volumes:
-      - mongo-data:/data/db
-      - ../sql/mongo:/docker-entrypoint-initdb.d:ro
-    healthcheck:
-      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.adminCommand({ping: 1}).ok' localhost/test | grep -q 1"]
-      interval: 10s
-      retries: 12
-      start_period: 10s
 
   # ---- 后端（单体）：容器内 Maven 多阶段构建 ----
   app:
@@ -106,11 +87,9 @@ services:
     volumes:
       - ./uploads:/data/uploads
     depends_on:
-      mysql:
+      db:
         condition: service_healthy
       redis:
-        condition: service_started
-      mongo:
         condition: service_started
 
   # ---- 前端 + 反向代理：唯一对外入口 ----
@@ -133,6 +112,5 @@ services:
       - app
 
 volumes:
-  mysql-data:
+  pg-data:
   redis-data:
-  mongo-data:
