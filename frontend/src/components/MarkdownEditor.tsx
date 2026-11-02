@@ -67,9 +67,10 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(fun
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     const mount = document.createElement('div');
     container.replaceChildren(mount);
+    const cachedValue = localStorage.getItem(cacheKey);
 
     const editor = new Vditor(mount, {
-      value: initialValueRef.current,
+      value: cachedValue ?? initialValueRef.current,
       mode: 'ir',
       lang: 'zh_CN',
       cdn: '/vditor',
@@ -103,25 +104,34 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(fun
       upload: {
         accept: 'image/*',
         multiple: true,
-        handler: async (files) => {
-          pendingUploadsRef.current += 1;
-          onUploadingChangeRef.current(true);
-          try {
-            for (const file of files) {
-              const url = await onUploadRef.current(file);
-              if (!active) return '编辑器已关闭，上传已中止';
-              editor.insertValue(`![${imageAlt(file.name)}](${url})\n`);
+        handler: (files): Promise<string> | Promise<null> => {
+          const upload = async (): Promise<string | null> => {
+            pendingUploadsRef.current += 1;
+            onUploadingChangeRef.current(true);
+            const failures: string[] = [];
+            try {
+              for (const file of files) {
+                try {
+                  const url = await onUploadRef.current(file);
+                  if (!active) return '编辑器已关闭，上传已中止';
+                  editor.insertValue(`![${imageAlt(file.name)}](${url})\n`);
+                } catch (error) {
+                  const reason = error instanceof Error ? error.message : '未知错误';
+                  failures.push(`${file.name}（${reason}）`);
+                }
+              }
+              if (failures.length > 0) {
+                const text = `以下图片上传失败：${failures.join('、')}`;
+                message.error(text);
+                return text;
+              }
+              return null;
+            } finally {
+              pendingUploadsRef.current = Math.max(0, pendingUploadsRef.current - 1);
+              if (active && pendingUploadsRef.current === 0) onUploadingChangeRef.current(false);
             }
-            return '';
-          } catch (error) {
-            const reason = error instanceof Error ? error.message : '未知错误';
-            const text = `图片上传失败：${reason}`;
-            message.error(text);
-            return text;
-          } finally {
-            pendingUploadsRef.current = Math.max(0, pendingUploadsRef.current - 1);
-            if (active && pendingUploadsRef.current === 0) onUploadingChangeRef.current(false);
-          }
+          };
+          return upload() as Promise<string> | Promise<null>;
         },
       },
       after: () => {
