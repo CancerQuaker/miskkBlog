@@ -24,7 +24,7 @@ export default defineConfig({
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
           antd: ['antd', '@ant-design/icons'],
-          editor: ['@uiw/react-md-editor'],
+          editor: ['vditor'],
           charts: ['echarts'],
         },
       },
