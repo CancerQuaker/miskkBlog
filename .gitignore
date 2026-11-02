@@ -20,6 +20,12 @@ docker/uploads/
 # local assets (not referenced by code)
 wallpapers/
 
+# 本地设计草稿 / 计划文档（不入库）
+docs/
+
+# Tomcat / Nacos 运行时工作目录残留（根目录与 frontend/ 下均有）
+work/
+
 # IDE
 .idea/
 .vscode/
@@ -29,6 +35,7 @@ wallpapers/
 .workbuddy/
 .playwright-cli/
 .worktrees/
+.zcode/
 
 # OS
 .DS_Store
