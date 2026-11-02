@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Button, Card, Col, Form, Input, Row, Select, Space, Spin, Switch, Upload, message,
 } from 'antd';
-import { PlusOutlined, PictureOutlined, SendOutlined, SaveOutlined } from '@ant-design/icons';
-import MDEditor from '@uiw/react-md-editor';
+import { PictureOutlined, SendOutlined, SaveOutlined } from '@ant-design/icons';
+import MarkdownEditor, { MarkdownEditorHandle } from '../../components/MarkdownEditor';
 import { articleApi, CategoryVO, adminArticleApi, ArticleDetail } from '../../api/article';
 
 /**
@@ -14,20 +14,31 @@ export default function ArticleEdit() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const id = params.get('id');
+  const routeKey = id || 'new';
   const [form] = Form.useForm();
+  const editorRef = useRef<MarkdownEditorHandle>(null);
   const [content, setContent] = useState('');
   const [categories, setCategories] = useState<CategoryVO[]>([]);
   const [tagOptions, setTagOptions] = useState<{ label: string; value: string }[]>([]);
   const [cover, setCover] = useState('');
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(!!id);
+  const [editorReady, setEditorReady] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const loading = loadedKey !== routeKey;
 
   useEffect(() => {
+    let cancelled = false;
+    setContent('');
+    setCover('');
+    setEditorReady(false);
+    form.resetFields();
     articleApi.categories().then(setCategories).catch(() => {});
     articleApi.tags().then((tags) => setTagOptions(tags.map((t) => ({ label: t.name, value: t.name })))).catch(() => {});
     if (id) {
       articleApi.detail(id)
         .then((d: ArticleDetail) => {
+          if (cancelled) return;
           form.setFieldsValue({
             title: d.title,
             summary: d.summary,
@@ -38,10 +49,16 @@ export default function ArticleEdit() {
           setContent(d.content);
           setCover(d.cover || '');
         })
-        .finally(() => setLoading(false));
+        .finally(() => {
+          if (!cancelled) setLoadedKey(routeKey);
+        });
+    } else {
+      setLoadedKey('new');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+    return () => {
+      cancelled = true;
+    };
+  }, [form, id, routeKey]);
 
   const uploadCover = async (file: File) => {
     const url = await articleApi.uploadImage(file);
@@ -50,12 +67,22 @@ export default function ArticleEdit() {
   };
 
   const save = async (status: number) => {
+    const editor = editorRef.current;
+    if (!editor?.isReady()) {
+      message.warning('编辑器正在加载，请稍后再保存');
+      return;
+    }
+    if (editor.isUploading()) {
+      message.warning('图片正在上传，请等待上传完成后再保存');
+      return;
+    }
     const values = await form.validateFields();
+    const latestContent = editor.getValue();
     setSaving(true);
     try {
       const payload = {
         ...values,
-        content,
+        content: latestContent,
         cover: cover || undefined,
         status,
         pinned: !!values.pinned,
@@ -67,6 +94,8 @@ export default function ArticleEdit() {
         await adminArticleApi.create(payload);
         message.success(status === 1 ? '发布成功捏~' : '已保存为草稿');
       }
+      setContent(latestContent);
+      editorRef.current?.clearCache();
       navigate('/admin/article');
     } finally {
       setSaving(false);
@@ -122,21 +151,22 @@ export default function ArticleEdit() {
         </Form.Item>
       </Form>
 
-      <div style={{ marginBottom: 8, color: 'var(--text-sub)' }}>正文（Markdown）</div>
-      <div data-color-mode="light">
-        <MDEditor
-          value={content}
-          onChange={(v) => setContent(v || '')}
-          height={520}
-          preview="edit"
-          extraCommands={[]}
-        />
-      </div>
+      <div style={{ marginBottom: 8, color: 'var(--text-sub)' }}>正文（Markdown，支持即时渲染与图片粘贴上传）</div>
+      <MarkdownEditor
+        key={routeKey}
+        ref={editorRef}
+        initialValue={content}
+        onChange={setContent}
+        onUpload={articleApi.uploadImage}
+        onReadyChange={setEditorReady}
+        onUploadingChange={setUploading}
+        cacheKey={id ? `article-${id}` : 'article-new'}
+      />
 
       <div style={{ marginTop: 16, textAlign: 'right' }}>
         <Space>
-          <Button icon={<SaveOutlined />} onClick={() => save(0)} disabled={saving}>存草稿</Button>
-          <Button type="primary" icon={<SendOutlined />} onClick={() => save(1)} loading={saving}>发布</Button>
+          <Button icon={<SaveOutlined />} onClick={() => save(0)} disabled={saving || !editorReady || uploading}>存草稿</Button>
+          <Button type="primary" icon={<SendOutlined />} onClick={() => save(1)} loading={saving} disabled={!editorReady || uploading}>发布</Button>
         </Space>
       </div>
     </Card>
