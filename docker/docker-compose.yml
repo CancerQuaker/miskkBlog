@@ -127,7 +127,7 @@ services:
       - ./uploads:/data/uploads
     # glob 由 sh 展开，exec 后 java 成为容器主进程（信号可正常送达）
     entrypoint: ["sh", "-c", "exec java -jar /app/*server*.jar"]
-    # 单体：用户/文章/友链三数据源 + 文章正文处理，512m 上限 → JVM 自动取 ~300m 堆
+    # 单体双栈：MySQL 基础数据 + Mongo 文章域 + 文章正文处理，512m 上限 → JVM 自动取 ~300m 堆
     mem_limit: 512m
     depends_on:
       mysql:
