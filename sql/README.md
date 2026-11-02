@@ -33,7 +33,7 @@ mysql -uroot -p < sql/03_miskk_friend.sql
 
 ## 注意
 
-- 三个库保持独立：用户服务连 `miskk_user`；博客服务（文章/友链/管理合并）连 `miskk_article`（主）与 `miskk_friend`（dynamic-datasource `@DS("friend")` 路由）。
+- 三个库保持独立，由单体后端通过 dynamic-datasource 同时连接：`miskk_article` 为主库，`miskk_user` 经 `@DS("user")`、`miskk_friend` 经 `@DS("friend")` 路由。
 - 种子文章的 `author_id = 1`，对应种子管理员；若你重建了用户表，请同步修改。
 - 重复执行 `02_miskk_article.sql` 会刷新种子文章（含浏览/点赞等计数）并重建种子评论/标签（仅限 id 1-4 的文章与 id 1-14 的评论），线上真实数据不受影响；发布/评论时间按执行日相对计算（近 30/14 天摊开）。
 - 修改密码也可登录后在「个人资料」中自助修改。

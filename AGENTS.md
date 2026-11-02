@@ -1,24 +1,24 @@
 # AGENTS.md
 
-迷失客客の博客：二次元风格全栈博客系统。前端 Vite 6 + React 18 + TS + AntD 5，后端 Spring Boot 3.3 微服务（Spring Cloud Alibaba + Nacos + OpenFeign），MySQL 三库 + Redis。详细架构图、配置表见 `README.md`。
+迷失客客の博客：二次元风格全栈博客系统。前端 Vite 6 + React 18 + TS + AntD 5，后端单体 Spring Boot 3.3（唯一模块 `backend/miskk-server`，:8100），MySQL 三库（dynamic-datasource 三数据源）+ Redis。详细架构图、配置表见 `README.md`。
 
 ## 目录结构
 
-- `backend/miskk-common` — 公共模块：Result/JWT/拦截器/公共配置。**DTO/VO/Feign 公共请求头/knife4j 配置统一放这里，不要在服务模块重复定义**
-- `backend/miskk-gateway` — 网关 :8100，唯一对外入口
-- `backend/miskk-service-user` — 用户服务 :8101
-- `backend/miskk-service-blog` — 博客服务 :8102（文章/友链/管理端，双数据源）
-- `frontend/` — Vite + React；`/api` 代理到网关 :8100
+- `backend/miskk-server` — 唯一后端模块（单个 Spring Boot 应用 :8100，主类 `MiskkApplication`），根包 `cn.miskk.blog`：
+  - `common/` — Result / JWT / LoginUser / UserContext / `@RequireLogin` `@RequireAdmin` / DTO / VO / 全局异常 / 工具 / Jackson & MyBatis-Plus 配置。**DTO/VO 统一放这里**
+  - `web/` — 对前端的 REST 层：`controller`（`/api/**`，GET/PUT/DELETE 风格）→ `handler`（参数翻译/组装，直调 Service）；`interceptor/AuthInterceptor` 统一鉴权；`config/` CORS + 上传文件静态映射
+  - `entity/ mapper/ service/ task/` — 用户 / 文章 / 评论 / 互动 / 友链 / 统计 / 系统监控业务，`task/ViewFlushTask` 每 30 秒把 Redis 缓冲的浏览量落库
+- `frontend/` — Vite + React；`/api` 代理到后端 :8100
 - `sql/` — 三个库的建表脚本（miskk_user / miskk_article / miskk_friend）
+- `docker/` — compose 编排：`docker-compose.yml`（挂载本机 jar/dist）与 `docker-compose.auto.yml`（容器内构建）
 
 ## 常用命令
 
 ```bash
 # 后端（父 POM 在仓库根目录，必须在根目录执行）
 mvn clean install -DskipTests
-mvn -pl backend/miskk-gateway spring-boot:run        # 或在 IDEA 运行各 *Application 主类
-mvn -pl backend/miskk-service-user spring-boot:run
-mvn -pl backend/miskk-service-blog spring-boot:run
+mvn -pl backend/miskk-server spring-boot:run                  # 或在 IDEA 运行 MiskkApplication 主类
+java -jar backend/miskk-server/target/miskk-server-1.0.0.jar  # 直接起打好的包（无需 Nacos，只依赖 MySQL + Redis）
 
 # 前端
 cd frontend && npm run dev        # http://localhost:5173
@@ -29,23 +29,22 @@ npm run build                     # tsc -b && vite build，类型检查也走这
 cd frontend && npm run build && tar.exe -a -cf dist.zip dist
 unzip -o dist.zip                  # 服务器上解压（-o 覆盖旧文件），得到 dist/ 目录
 
-# 单元测试（gateway，工具型：密码哈希/内部 token/登录 token）
-mvn -pl backend/miskk-gateway test
-mvn -pl backend/miskk-gateway test -Dtest=SecurityToolTest#generatePasswordHash    # 生成 BCrypt 密码哈希（写入 SQL 种子）
-mvn -pl backend/miskk-gateway test -Dtest=SecurityToolTest#generateInternalToken   # 生成随机内部 token（写入 docker/.env）
+# 单元测试（工具型：密码哈希 / 登录 token）
+mvn -pl backend/miskk-server test
+mvn -pl backend/miskk-server test -Dtest=SecurityToolTest#generatePasswordHash    # 生成 BCrypt 密码哈希（写入 SQL 种子）
 ```
 
-gateway 之外暂无测试；整包构建仍带 `-DskipTests`。
+`SecurityToolTest` 之外暂无测试；整包构建仍带 `-DskipTests`。
 
 Vite dev server 长时间运行后偶发吐出新旧混杂的模块代码（文件明明改了、页面仍跑旧逻辑，刷新无效，`curl` 模块内容可证实）：杀掉 5173 进程重启 `npm run dev` 即可，不必排查代码。
 
 ## 架构规则（改动前必读）
 
-- **API 风格分两层**：blog/user 服务对外接口**全部 POST + JSON 请求体**；网关是 Spring MVC 风格（controller → handler → FeignClient 转发），对前端保持原 GET/PUT/DELETE 风格。加接口时两层都要写。
-- **鉴权**：JWT 的签发与解析都只在网关（登录校验通过后由网关生成 token，`JWT_SECRET` 仅网关配置），身份以单个 `X-User-Info` 请求头（LoginUser 序列化 JSON：userId/role/ip，网关侧 `UserContext.toJson()` 生成）经 Feign 下发，下游用拦截器还原 ThreadLocal 并校验 `@RequireLogin / @RequireAdmin`（注解在 miskk-common）。
-- **内部接口**：`/internal/**` 只接受带 `X-Internal-Token` 的调用；Feign 服务间直连（不走网关），公共头已封装在 miskk-common 的 Feign 配置里。
-- **双数据源**：博客服务 miskk_article 为主库，friend 库用 `@DS("friend")` 路由，友链事务也绑定 friend 连接。
-- **浏览量/时长**：Redis 削峰（SADD 按访客按天去重 + Hash 缓冲，30 秒批量落库）；前端每 20 秒心跳 + sendBeacon 兜底。改动文章/时长逻辑时注意这条异步链路。
+- **请求链路单层**：`web.controller`（对前端保持 GET/PUT/DELETE 风格，路径全部带 `/api/` 前缀）→ `web.handler`（把路径/查询参数翻译为 Service 调用并组装 `Result`）→ `service` → `mapper`。加接口只需写 controller + handler 两处（必要时补 Service 方法）；Controller 保持薄，业务判断放 handler / service。
+- **鉴权**：`web.interceptor.AuthInterceptor` 一处完成——解析 `Authorization: Bearer` JWT → 填充 `UserContext`（ThreadLocal `LoginUser`：userId / role / ip，匿名也填充、userId 为 null）；非白名单（`PUBLIC_ALL / PUBLIC_GET`）且无有效 token 返回 401；`/api/admin/**` 非管理员 403；再按 Controller 方法/类上的 `@RequireLogin / @RequireAdmin` 校验。**新增接口：需要登录/管理员的加注解；允许匿名的必须加进白名单**（白名单外默认要求登录）。拦截响应统一 HTTP 200 + `{"code":401|403,...}`。JWT 签发在 `web.handler.AuthHandler.withToken`，`JWT_SECRET` 为应用唯一密钥。
+- **三数据源**：dynamic-datasource，`article`（miskk_article）为 primary；用户侧 `UserMapper` / `UserServiceImpl` 标 `@DS("user")`，友链侧 `Friend*Mapper` / `FriendServiceImpl` 标 `@DS("friend")`。带 `@Transactional` 的 Service **必须在类级同时标 `@DS`**（切面优先级高于事务切面，保证事务绑定正确连接）。
+- **上传与静态资源**：`UploadUtil.saveImage(file, uploadDir, "user"|"article")` 落盘到 `${miskk.upload.dir}/{user|article}/yyyyMM/`，返回 `/uploads/...` 相对路径；Handler 拼上 `/api/static/user` 或 `/api/static/article` 前缀返回给前端，由 `web.config.WebConfig.addResourceHandlers` 把这两个前缀直接映射到上传目录（不存在返回 HTTP 404）。
+- **浏览量/时长**：Redis 削峰（SADD 按访客按天去重 + Hash 缓冲，30 秒批量落库）；前端每 20 秒心跳 + sendBeacon 兜底。匿名访客标识由 `ArticleHandler.visitorIdentity()` 按 `LoginUser.ip` 做 SHA-256 短哈希。改动文章/时长逻辑时注意这条异步链路。
 - **前端**：状态用 zustand（`src/stores`），站点配置在 `src/config/site.ts`。
 - **主题系统双轨**：CSS 变量按 `html[data-theme='light|dark|eye']` 三块定义（`src/styles/global.css`），AntD token 在 `main.tsx` 同步切换。默认主题色 `#80a942`（草绿）。
 - **主题色覆盖链**：用户自选主题色存 zustand `accent`（null = 用主题内置色），在 `main.tsx` 以行内 CSS 变量覆盖 `--primary / --primary-strong / --primary-weak / --primary-light`（行内样式优先级高于所有主题块）。组件一律消费 `var(--primary*)`，不要硬编码主题色；SVG 的 `fill / stopColor` 想吃 `var()` 必须写进 `style` 属性，写表现属性不生效。
@@ -57,4 +56,4 @@ Vite dev server 长时间运行后偶发吐出新旧混杂的模块代码（文�
 - Java 17 目标；Lombok 注解处理器已在父 POM 的 maven-compiler-plugin 显式配置（`proc: full`），JDK 23+ 必须保留。
 - 前端 TypeScript 严格模式，提交前跑 `npm run build` 验证类型。
 - 文档与注释使用中文。
-- mysql、redis、nacos等用户名密码，查阅各后端模块中的配置文件获取
+- MySQL、Redis 等连接参数在 `backend/miskk-server/src/main/resources/application.yml`（默认 `127.0.0.1` / `root` / `123456`，环境变量可覆盖）。
