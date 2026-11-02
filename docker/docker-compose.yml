@@ -12,15 +12,16 @@
 #
 # 用法：
 #   cp .env.example .env              # 必填 MYSQL_PASSWORD / JWT_SECRET（与 auto 版通用）
-#   docker compose up -d              # 全栈一套启动：MySQL/Redis/后端/nginx
-#   docker compose up -d mysql redis  # 只起基础设施（后端跑 IDEA、前端跑 Vite 时）
+#   docker compose up -d              # 全栈一套启动：MySQL/Redis/MongoDB/后端/nginx
+#   docker compose up -d mysql redis mongo   # 只起基础设施（后端跑 IDEA、前端跑 Vite 时）
 #
 # 改了代码想生效：本机重新构建，再 docker compose restart app nginx
 # （jar 与 dist 是挂载进容器的，restart 即用新产物）。
 #
-# 资源基线按 2核2G 小内存服务器调优：各服务带 mem_limit（合计 ~1G，余量充足），
-# 后端 JVM 堆按容器上限的 60% 自适应 + SerialGC；MySQL 关 performance_schema、Redis 限 maxmemory。
-# 大机器想放开：调大各 mem_limit 或删掉即可。
+# 资源基线按 2核2G 小内存服务器调优：各服务带 mem_limit（合计 ~1.4G，余量偏紧，
+# 2G 机器建议把 app 降到 448m 或 mongo 降到 320m；大机器调大各 mem_limit 或删掉即可），
+# 后端 JVM 堆按容器上限的 60% 自适应 + SerialGC；MySQL 关 performance_schema、
+# Mongo 限 WiredTiger 缓存、Redis 限 maxmemory。
 #
 # 安全模型与数据落盘同 docker-compose.auto.yml：默认只有 nginx 对外（SITE_PORT，默认 80），
 # 后端仅映射到宿主机回环地址（127.0.0.1:8100，便于宿主机 nginx 反代），
@@ -37,6 +38,7 @@ x-backend-env: &backend-env
   MYSQL_ADDR: mysql:${MYSQL_SERVER_PORT:-3306}
   MYSQL_USER: ${MYSQL_USER:-root}
   MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 docker/.env 中设置 MYSQL_PASSWORD}
+  MONGO_ADDR: mongo:${MONGO_SERVER_PORT:-27017}
   REDIS_HOST: redis
   REDIS_PORT: ${REDIS_SERVER_PORT:-6379}
   REDIS_PASSWORD: ${REDIS_PASSWORD:-}
@@ -60,7 +62,7 @@ services:
     #  - "${MYSQL_PORT:-3306}:${MYSQL_SERVER_PORT:-3306}"
     volumes:
       - mysql-data:/var/lib/mysql
-      - ../sql:/docker-entrypoint-initdb.d:ro   # 首次启动自动执行三个建库脚本
+      - ../sql/mysql:/docker-entrypoint-initdb.d:ro   # 首次启动自动执行基础库建表脚本（用户/友链）
     # 容器内端口改动会经 MYSQL_ADDR 同步到后端连接串
     # performance-schema=OFF 省 ~150MB；buffer pool 显式 128M（适配 2G 小内存）
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --port=${MYSQL_SERVER_PORT:-3306} --performance-schema=OFF --innodb-buffer-pool-size=128M
@@ -85,6 +87,29 @@ services:
     volumes:
       - redis-data:/data
 
+  mongo:
+    image: mongo:8
+    container_name: miskk-mongo
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      # 首次启动（空数据卷）自动执行文章库种子脚本
+      MONGO_INITDB_DATABASE: miskk_article
+    # WiredTiger 缓存 256m（默认会吃掉近一半容器内存）；384m 上限适配 2G 小内存
+    command: ["mongod", "--wiredTigerCacheSizeGB", "0.25", "--port", "${MONGO_SERVER_PORT:-27017}"]
+    mem_limit: 384m
+    # 宿主机端口映射默认不开放（安全模型）；需要时取消注释
+    #ports:
+    #  - "${MONGO_PORT:-27017}:${MONGO_SERVER_PORT:-27017}"
+    volumes:
+      - mongo-data:/data/db
+      - ../sql/mongo:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.adminCommand({ping: 1}).ok' localhost/test | grep -q 1"]
+      interval: 10s
+      retries: 12
+      start_period: 10s
+
   # ---- 后端（单体）：挂载本机 jar 目录（.env 可改指，默认 backend/miskk-server/target），通配符启动可执行 jar ----
   app:
     image: eclipse-temurin:17-jre
@@ -108,6 +133,8 @@ services:
       mysql:
         condition: service_healthy
       redis:
+        condition: service_started
+      mongo:
         condition: service_started
     ports:
       - "127.0.0.1:8100:${APP_PORT:-8100}"
@@ -135,3 +162,4 @@ services:
 volumes:
   mysql-data:
   redis-data:
+  mongo-data:
