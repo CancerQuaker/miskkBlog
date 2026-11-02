@@ -8,6 +8,8 @@ interface MarkdownEditorProps {
   initialValue: string;
   onChange: (value: string) => void;
   onUpload: (file: File) => Promise<string>;
+  onReadyChange: (ready: boolean) => void;
+  onUploadingChange: (uploading: boolean) => void;
   cacheKey: string;
 }
 
@@ -15,6 +17,8 @@ export interface MarkdownEditorHandle {
   getValue: () => string;
   clearCache: () => void;
   focus: () => void;
+  isReady: () => boolean;
+  isUploading: () => boolean;
 }
 
 function imageAlt(name: string) {
@@ -22,22 +26,30 @@ function imageAlt(name: string) {
 }
 
 const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(function MarkdownEditor(
-  { initialValue, onChange, onUpload, cacheKey },
+  { initialValue, onChange, onUpload, onReadyChange, onUploadingChange, cacheKey },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Vditor | null>(null);
   const initialValueRef = useRef(initialValue);
+  const readyRef = useRef(false);
+  const pendingUploadsRef = useRef(0);
   const onChangeRef = useRef(onChange);
   const onUploadRef = useRef(onUpload);
+  const onReadyChangeRef = useRef(onReadyChange);
+  const onUploadingChangeRef = useRef(onUploadingChange);
   initialValueRef.current = initialValue;
   onChangeRef.current = onChange;
   onUploadRef.current = onUpload;
+  onReadyChangeRef.current = onReadyChange;
+  onUploadingChangeRef.current = onUploadingChange;
 
   useImperativeHandle(ref, () => ({
     getValue: () => editorRef.current?.getValue() ?? initialValueRef.current,
     clearCache: () => editorRef.current?.clearCache(),
     focus: () => editorRef.current?.focus(),
+    isReady: () => readyRef.current,
+    isUploading: () => pendingUploadsRef.current > 0,
   }), []);
 
   useEffect(() => {
@@ -92,6 +104,8 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(fun
         accept: 'image/*',
         multiple: true,
         handler: async (files) => {
+          pendingUploadsRef.current += 1;
+          onUploadingChangeRef.current(true);
           try {
             for (const file of files) {
               const url = await onUploadRef.current(file);
@@ -104,6 +118,9 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(fun
             const text = `图片上传失败：${reason}`;
             message.error(text);
             return text;
+          } finally {
+            pendingUploadsRef.current = Math.max(0, pendingUploadsRef.current - 1);
+            if (active && pendingUploadsRef.current === 0) onUploadingChangeRef.current(false);
           }
         },
       },
@@ -114,6 +131,8 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(fun
           return;
         }
         editorRef.current = editor;
+        readyRef.current = true;
+        onReadyChangeRef.current(true);
         applyTheme();
         onChangeRef.current(editor.getValue());
       },
@@ -130,6 +149,10 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(fun
 
     return () => {
       active = false;
+      readyRef.current = false;
+      pendingUploadsRef.current = 0;
+      onReadyChangeRef.current(false);
+      onUploadingChangeRef.current(false);
       observer.disconnect();
       if (ready) destroyEditor();
       ready = false;

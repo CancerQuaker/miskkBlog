@@ -7,11 +7,17 @@ export default defineConfig({
   plugins: [
     react(),
     viteStaticCopy({
-      targets: [{
-        src: 'node_modules/vditor/dist/**/*',
-        dest: 'vditor/dist',
-        rename: { stripBase: 3 },
-      }],
+      targets: [
+        { src: 'node_modules/vditor/dist/js/i18n/zh_CN.js', dest: 'vditor/dist/js/i18n' },
+        { src: 'node_modules/vditor/dist/js/lute/lute.min.js', dest: 'vditor/dist/js/lute' },
+        { src: 'node_modules/vditor/dist/js/icons/ant.js', dest: 'vditor/dist/js/icons' },
+        { src: 'node_modules/vditor/dist/js/highlight.js/highlight.min.js', dest: 'vditor/dist/js/highlight.js' },
+        { src: 'node_modules/vditor/dist/js/highlight.js/third-languages.js', dest: 'vditor/dist/js/highlight.js' },
+        { src: 'node_modules/vditor/dist/js/highlight.js/styles/github.min.css', dest: 'vditor/dist/js/highlight.js/styles' },
+        { src: 'node_modules/vditor/dist/js/highlight.js/styles/github-dark.min.css', dest: 'vditor/dist/js/highlight.js/styles' },
+        { src: 'node_modules/vditor/dist/css/content-theme/light.css', dest: 'vditor/dist/css/content-theme' },
+        { src: 'node_modules/vditor/dist/css/content-theme/dark.css', dest: 'vditor/dist/css/content-theme' },
+      ],
     }),
   ],
   server: {
