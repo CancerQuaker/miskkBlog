@@ -1061,18 +1061,29 @@ a {
   animation: bubblePop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
-/* ---------- 樱花特效 ---------- */
-.sakura-stage {
+/* ---------- 星空闪烁特效 ---------- */
+.starfield-stage {
   position: fixed;
   inset: 0;
   z-index: 3;
   pointer-events: none;
   overflow: hidden;
 }
-.sakura-petal {
+.starfield-star {
   position: absolute;
-  will-change: transform;
   contain: layout style;
+  will-change: opacity;
+  animation: starfieldTwinkle 4s ease-in-out infinite;
+}
+@keyframes starfieldTwinkle {
+  0%, 100% { opacity: var(--star-min); }
+  50% { opacity: var(--star-peak); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .starfield-star {
+    animation: none;
+    opacity: var(--star-min);
+  }
 }
 
 /* ---------- 音乐播放器 ---------- */
