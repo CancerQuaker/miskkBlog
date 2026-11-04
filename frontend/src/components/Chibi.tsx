@@ -19,7 +19,7 @@ export const CHIBI_LIST: Record<string, ChibiMeta> = {
   paimon: { src: '/chibi/paimon.png', name: '派蒙', game: '原神' },
   hutao: { src: '/chibi/hutao.png', name: '胡桃', game: '原神' },
   nahida: { src: '/chibi/nahida.png', name: '纳西妲', game: '原神' },
-  furina: { src: '/chibi/furina.png', name: '芙宁娜', game: '原神' },
+  furina: { src: '/chibi/furina-legacy.png', name: '芙宁娜', game: '原神' },
   klee: { src: '/chibi/klee.png', name: '可莉', game: '原神' },
   raiden: { src: '/chibi/raiden.png', name: '雷电将军', game: '原神' },
   zhongli: { src: '/chibi/zhongli.png', name: '钟离', game: '原神' },

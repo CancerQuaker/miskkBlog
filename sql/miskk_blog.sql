@@ -48,11 +48,14 @@ VALUES (11, 'xiaoxing', '$2a$10$XPg5sck5VLn2EB0mcKIHt.zTyRZJihfTvLVbM6nt8a/wlzb7
         '才不是应急食品！是最好的伙伴！', 0, 0, NOW() - INTERVAL '2 day', NOW() - INTERVAL '55 day'),
        (13, 'stelle', '$2a$10$XPg5sck5VLn2EB0mcKIHt.zTyRZJihfTvLVbM6nt8a/wlzb7.F4GC', '三月七', 'stelle@miskk.cn', '/chibi/march7.png',
         '这次探险一定要载入史册！', 0, 0, NOW() - INTERVAL '3 day', NOW() - INTERVAL '48 day'),
-       (14, 'funina', '$2a$10$XPg5sck5VLn2EB0mcKIHt.zTyRZJihfTvLVbM6nt8a/wlzb7.F4GC', '芙宁娜', 'funina@miskk.cn', '/chibi/furina.png',
+       (14, 'funina', '$2a$10$XPg5sck5VLn2EB0mcKIHt.zTyRZJihfTvLVbM6nt8a/wlzb7.F4GC', '芙宁娜', 'funina@miskk.cn', '/chibi/furina-legacy.png',
         '哼哼，本大人只是路过点评一下', 0, 0, NOW() - INTERVAL '1 day', NOW() - INTERVAL '36 day'),
        (15, 'yinlang', '$2a$10$XPg5sck5VLn2EB0mcKIHt.zTyRZJihfTvLVbM6nt8a/wlzb7.F4GC', '银狼', 'yinlang@miskk.cn', '/chibi/silverwolf.png',
         '随便逛逛，别在意', 0, 0, NOW() - INTERVAL '5 day', NOW() - INTERVAL '21 day')
 ON CONFLICT (id) DO NOTHING;
+
+-- 管理员与站长名片使用清晰新图；普通用户和站内 Q 版装饰保留旧版贴纸
+UPDATE t_user SET avatar = '/chibi/furina-legacy.png' WHERE role <> 1 AND avatar = '/chibi/furina.png';
 
 -- ---------------------------- 友链 ----------------------------
 
