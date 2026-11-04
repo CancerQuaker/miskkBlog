@@ -1,5 +1,5 @@
 .markdown-editor {
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--bg-card);
@@ -13,12 +13,14 @@
 
 .markdown-editor .vditor {
   border: 0;
+  border-radius: inherit;
   background: var(--bg-card);
 }
 
 .markdown-editor .vditor-toolbar {
   padding: 4px 12px !important;
   border-bottom: 1px solid var(--divider);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
   background: var(--bg-muted);
 }
 
@@ -58,6 +60,7 @@
 }
 
 .markdown-editor .vditor-resize {
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
   background: var(--bg-muted);
 }
 

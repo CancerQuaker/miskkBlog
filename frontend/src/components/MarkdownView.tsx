@@ -14,7 +14,7 @@ const slug = (text: string) =>
 
 
 /** 兼容数据库中把 \n 存成字面量的情况（种子脚本/旧数据），先还原为真实换行 */
-function normalizeMarkdown(text: string): string {
+export function normalizeMarkdown(text: string): string {
   return text
     .replace(/\\r\\n/g, '\n')
     .replace(/\\n/g, '\n')

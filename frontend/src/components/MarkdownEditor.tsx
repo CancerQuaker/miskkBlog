@@ -3,6 +3,7 @@ import { message } from 'antd';
 import Vditor from 'vditor';
 import 'vditor/dist/index.css';
 import '../styles/markdown-editor.css';
+import { normalizeMarkdown } from './MarkdownView';
 
 interface MarkdownEditorProps {
   initialValue: string;
@@ -68,9 +69,13 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(fun
     const mount = document.createElement('div');
     container.replaceChildren(mount);
     const cachedValue = localStorage.getItem(cacheKey);
+    const initialValue = normalizeMarkdown(cachedValue ?? initialValueRef.current);
+    if (cachedValue !== null && cachedValue !== initialValue) {
+      localStorage.setItem(cacheKey, initialValue);
+    }
 
     const editor = new Vditor(mount, {
-      value: cachedValue ?? initialValueRef.current,
+      value: initialValue,
       mode: 'ir',
       lang: 'zh_CN',
       cdn: '/vditor',
