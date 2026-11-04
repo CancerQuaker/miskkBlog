@@ -25,6 +25,7 @@
 
 **Files:**
 - Modify: `frontend/src/components/SakuraEffect.tsx`
+- Modify: `frontend/src/styles/global.css`（星空层使用 absolute，body 建立整页定位容器）
 
 **Interfaces:**
 - Consumes: 现有 `sakura` 开关和 `starTwinkle`。

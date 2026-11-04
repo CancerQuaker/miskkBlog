@@ -126,6 +126,7 @@ body {
 }
 
 body {
+  position: relative;
   font-family: 'PingFang SC', 'HarmonyOS Sans SC', 'Microsoft YaHei UI', 'Microsoft YaHei',
     'Hiragino Maru Gothic ProN', system-ui, -apple-system, sans-serif;
   color: var(--text-main);
@@ -1063,7 +1064,7 @@ a {
 
 /* ---------- 星空闪烁特效 ---------- */
 .starfield-stage {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 3;
   pointer-events: none;
