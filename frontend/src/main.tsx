@@ -6,7 +6,7 @@ import zhCN from 'antd/locale/zh_CN';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import App from './App';
-import { useThemeStore, shadeHex, hexToRgba, resolveTheme } from './stores/themeStore';
+import { useThemeStore, applyAccentVariables, resolveTheme } from './stores/themeStore';
 import './styles/global.css';
 import 'highlight.js/styles/github-dark.css';
 
@@ -70,11 +70,7 @@ function Root() {
       root.style.removeProperty('--primary-light');
       return;
     }
-    root.style.setProperty('--primary', accent);
-    root.style.setProperty('--primary-strong', shadeHex(accent, resolved === 'dark' ? 0.12 : -0.1));
-    root.style.setProperty('--primary-weak', hexToRgba(accent, 0.14));
-    // 浅端供星星光标等渐变高光使用
-    root.style.setProperty('--primary-light', shadeHex(accent, resolved === 'dark' ? 0.3 : 0.28));
+    applyAccentVariables(accent, resolved);
   }, [accent, resolved]);
 
   const baseTheme = antdThemes[resolved];

@@ -90,3 +90,52 @@ export function hexToRgba(hex: string, alpha: number): string {
   const [r, g, b] = hexToRgb(hex);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
+
+/** 自定义主题色的行内 CSS 变量覆盖 */
+export function applyAccentVariables(accent: string, resolved: 'light' | 'dark' | 'eye'): void {
+  const root = document.documentElement;
+  root.style.setProperty('--primary', accent);
+  root.style.setProperty('--primary-strong', shadeHex(accent, resolved === 'dark' ? 0.12 : -0.1));
+  root.style.setProperty('--primary-weak', hexToRgba(accent, 0.14));
+  root.style.setProperty('--primary-light', shadeHex(accent, resolved === 'dark' ? 0.3 : 0.28));
+}
+
+/** 取色器逐帧预览、停顿后提交，避免高频输入反复重算全站 AntD 主题 */
+export function createAccentScheduler(
+  preview: (accent: string) => void,
+  commit: (accent: string) => void,
+  commitDelay = 120,
+) {
+  let pending: string | null = null;
+  let frame: number | null = null;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  const clearPending = () => {
+    if (frame !== null) cancelAnimationFrame(frame);
+    if (timer !== null) clearTimeout(timer);
+    frame = null;
+    timer = null;
+  };
+
+  const flush = () => {
+    clearPending();
+    if (pending !== null) commit(pending);
+    pending = null;
+  };
+
+  return {
+    update(accent: string) {
+      pending = accent;
+      if (frame === null) {
+        frame = requestAnimationFrame(() => {
+          frame = null;
+          if (pending !== null) preview(pending);
+        });
+      }
+      if (timer !== null) clearTimeout(timer);
+      timer = setTimeout(flush, commitDelay);
+    },
+    flush,
+    dispose: flush,
+  };
+}

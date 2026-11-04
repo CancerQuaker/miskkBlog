@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Dropdown, Input, Avatar, Drawer, Popover, Switch } from 'antd';
 import {
@@ -16,7 +16,14 @@ import {
   LaptopOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../stores/authStore';
-import { useThemeStore, ThemeMode, ACCENT_PRESETS } from '../stores/themeStore';
+import {
+  useThemeStore,
+  ThemeMode,
+  ACCENT_PRESETS,
+  applyAccentVariables,
+  createAccentScheduler,
+  resolveTheme,
+} from '../stores/themeStore';
 import MusicPlayer from '../components/MusicPlayer';
 import { siteConfig } from '../config/site';
 
@@ -78,6 +85,19 @@ function BrightnessPanel() {
 function AppearancePanel() {
   const { accent, setAccent, sakura, setSakura, starCursor, setStarCursor, live2d, setLive2d } =
     useThemeStore();
+  const [pickerColor, setPickerColor] = useState(accent || '#80a942');
+  const scheduler = useMemo(() => createAccentScheduler(
+    (color) => applyAccentVariables(color, resolveTheme(useThemeStore.getState().mode)),
+    setAccent,
+  ), [setAccent]);
+
+  useEffect(() => () => scheduler.dispose(), [scheduler]);
+  useEffect(() => setPickerColor(accent || '#80a942'), [accent]);
+
+  const selectAccent = (color: string | null) => {
+    scheduler.flush();
+    setAccent(color);
+  };
 
   return (
     <div style={{ width: 248, padding: '4px 2px' }}>
@@ -91,7 +111,7 @@ function AppearancePanel() {
               className={`accent-dot ${selected ? 'selected' : ''}`}
               title={p.name}
               style={p.color ? { background: p.color } : undefined}
-              onClick={() => setAccent(p.color)}
+              onClick={() => selectAccent(p.color)}
             >
               {!p.color && <span className="accent-dot-default">默</span>}
             </span>
@@ -100,8 +120,11 @@ function AppearancePanel() {
         <label className="accent-dot accent-custom" title="自定义颜色">
           <input
             type="color"
-            value={accent || '#80a942'}
-            onChange={(e) => setAccent(e.target.value)}
+            value={pickerColor}
+            onChange={(e) => {
+              setPickerColor(e.target.value);
+              scheduler.update(e.target.value);
+            }}
           />
           <span className="accent-custom-plus">＋</span>
         </label>
@@ -109,7 +132,7 @@ function AppearancePanel() {
       {accent && accent.toLowerCase() !== '#80a942' && (
         <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-sub)' }}>
           当前：<span style={{ color: accent, fontWeight: 600 }}>{accent}</span>
-          <span className="accent-reset" onClick={() => setAccent(null)}> 恢复默认</span>
+          <span className="accent-reset" onClick={() => selectAccent(null)}> 恢复默认</span>
         </div>
       )}
 
