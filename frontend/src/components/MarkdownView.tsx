@@ -12,10 +12,19 @@ export interface TocItem {
 const slug = (text: string) =>
   text.trim().toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu, '').replace(/\s+/g, '-');
 
+
+/** 兼容数据库中把 \n 存成字面量的情况（种子脚本/旧数据），先还原为真实换行 */
+function normalizeMarkdown(text: string): string {
+  return text
+    .replace(/\\r\\n/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\\t/g, '\t');
+}
+
 /** 从 markdown 提取标题目录 */
 export function extractToc(markdown: string): TocItem[] {
   const items: TocItem[] = [];
-  const lines = markdown.split('\n');
+  const lines = normalizeMarkdown(markdown).split('\n');
   let inCode = false;
   for (const line of lines) {
     if (line.trim().startsWith('```')) {
@@ -42,6 +51,8 @@ export default function MarkdownView({ content }: { content: string }) {
     return <Tag id={slug(text)}>{props.children}</Tag>;
   };
 
+  const normalized = normalizeMarkdown(content);
+
   return (
     <div className="markdown-body">
       <ReactMarkdown
@@ -55,7 +66,7 @@ export default function MarkdownView({ content }: { content: string }) {
           a: (props) => <a {...props} target="_blank" rel="noreferrer" />,
         }}
       >
-        {content}
+        {normalized}
       </ReactMarkdown>
     </div>
   );
