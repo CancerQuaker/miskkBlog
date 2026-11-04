@@ -1072,17 +1072,16 @@ a {
 .starfield-star {
   position: absolute;
   contain: layout style;
-  will-change: opacity;
-  animation: starfieldTwinkle 4s ease-in-out infinite;
-}
-@keyframes starfieldTwinkle {
-  0%, 100% { opacity: var(--star-min); }
-  50% { opacity: var(--star-peak); }
+  will-change: opacity, transform;
+  background: var(--primary);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  animation: starTwinkle 2.6s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {
   .starfield-star {
     animation: none;
-    opacity: var(--star-min);
+    opacity: 0.4;
+    transform: scale(0.9);
   }
 }
 
