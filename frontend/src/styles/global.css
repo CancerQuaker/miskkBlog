@@ -1061,7 +1061,8 @@ a {
   animation: bubblePop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
-/* ---------- 樱花特效 ---------- */.sakura-stage {
+/* ---------- 樱花特效 ---------- */
+.sakura-stage {
   position: fixed;
   inset: 0;
   z-index: 3;
@@ -1071,7 +1072,7 @@ a {
 .sakura-petal {
   position: absolute;
   will-change: transform;
-  opacity: 0.8;
+  contain: layout style;
 }
 
 /* ---------- 音乐播放器 ---------- */
