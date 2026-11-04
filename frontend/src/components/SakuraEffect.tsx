@@ -13,6 +13,14 @@ interface Petal {
   opacity: number;
 }
 
+const BASE_FRAME_MS = 1000 / 60;
+const MAX_FRAME_STEP = 3;
+
+/** 按实际帧间隔换算运动步长，后台恢复时最多补 3 帧，避免花瓣瞬移 */
+export function getAnimationStep(elapsedMs: number): number {
+  return Math.min(Math.max(elapsedMs, 0) / BASE_FRAME_MS, MAX_FRAME_STEP);
+}
+
 /** 樱花飘落特效（canvas-free，DOM 花瓣 + rAF），外观面板可开关 */
 export default function SakuraEffect({ count = 18 }: { count?: number }) {
   const sakura = useThemeStore((s) => s.sakura);
@@ -51,11 +59,14 @@ export default function SakuraEffect({ count = 18 }: { count?: number }) {
     for (let i = 0; i < count; i++) petals.push(spawn(true));
 
     let raf = 0;
-    const tick = () => {
+    let previousTime: number | null = null;
+    const tick = (now: number) => {
+      const step = previousTime === null ? 1 : getAnimationStep(now - previousTime);
+      previousTime = now;
       for (const p of petals) {
-        p.y += p.vy;
-        p.x += p.vx + Math.sin((p.y + p.size) / 40) * 0.6;
-        p.rot += p.vr;
+        p.y += p.vy * step;
+        p.x += (p.vx + Math.sin((p.y + p.size) / 40) * 0.6) * step;
+        p.rot += p.vr * step;
         if (p.y > window.innerHeight + 30 || p.x < -40 || p.x > window.innerWidth + 40) {
           Object.assign(p, spawn(false), { el: p.el });
           p.el = petals[petals.indexOf(p)].el;
