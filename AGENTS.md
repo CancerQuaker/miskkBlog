@@ -47,7 +47,7 @@ Vite dev server 长时间运行后偶发吐出新旧混杂的模块代码（文�
 - **上传与静态资源**：`UploadUtil.saveImage(file, uploadDir, "user"|"article")` 落盘到 `${miskk.upload.dir}/{user|article}/yyyyMM/`，返回 `/uploads/...` 相对路径；Handler 拼上 `/api/static/user` 或 `/api/static/article` 前缀返回给前端，由 `web.config.WebConfig.addResourceHandlers` 把这两个前缀直接映射到上传目录（不存在返回 HTTP 404）。
 - **浏览量**：Redis 削峰（SADD 按访客按天去重 + Hash 缓冲，30 秒批量落库）。匿名访客标识由 `ArticleHandler.visitorIdentity()` 按 `LoginUser.ip` 做 SHA-256 短哈希。改动文章/浏览量逻辑时注意这条异步链路。
 - **前端**：状态用 zustand（`src/stores`），站点配置在 `src/config/site.ts`。
-- **Canvas 柔光尘**：`SakuraEffect.tsx`（历史命名）默认固定 128 个粒子并随机分布，左右非卡片区域各约 45%、中央卡片区域约 10%；两侧候选通过多次采样尽量避开真实卡片矩形，卡片布局变化后重算。交互过程中不新增、不删除、不自动补充，每个粒子只能在独立椭圆区域内运动。背景移动鼠标时按实时距离选取最近 16 个，释放后返回原区域；鼠标连线与粒子邻近连线只作用于牵引粒子，粒子互斥后也必须重新执行区域约束。现行设计详见 `docs/superpowers/specs/2026-11-07-canvas-dust-design.md`。
+- **Canvas 柔光尘**：`SakuraEffect.tsx`（历史命名）默认固定 128 个粒子并在全屏均匀随机分布，不区分左右、中央或卡片区域；交互过程中不新增、不删除、不自动补充，每个粒子只能在独立椭圆区域内运动。背景移动鼠标时只选择 260px 内的粒子，按实时距离最多牵引 16 个，不足不补远，超出范围的当前候选立即释放，释放后返回原区域；鼠标连线与粒子邻近连线只作用于牵引粒子，粒子互斥后也必须重新执行区域约束。现行设计详见 `docs/superpowers/specs/2026-11-07-canvas-dust-design.md`。
 - **主题系统双轨**：CSS 变量按 `html[data-theme='light|dark|eye']` 三块定义（`src/styles/global.css`），AntD token 在 `main.tsx` 同步切换。默认主题色 `#80a942`（草绿）。
 - **主题色覆盖链**：用户自选主题色存 zustand `accent`（null = 用主题内置色），在 `main.tsx` 以行内 CSS 变量覆盖 `--primary / --primary-strong / --primary-weak / --primary-light`（行内样式优先级高于所有主题块）。组件一律消费 `var(--primary*)`，不要硬编码主题色；SVG 的 `fill / stopColor` 想吃 `var()` 必须写进 `style` 属性，写表现属性不生效。
 - **看板娘**：oh-my-live2d 挂在独立根元素 `#oml2d-stage`（DOM 里没有 `#oml2d` 包装层），选择器别写错。模型为本地文件 `frontend/public/live2d/senko/`（仙狐小姐），交互动作由 `senko.model3.json` 的命中区/动作组定义（`TapHead` / `TapBody` 命名须符合 Cubism 规范）。

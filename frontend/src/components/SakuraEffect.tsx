@@ -24,7 +24,8 @@ interface DustParticle {
 }
 
 const TAU = Math.PI * 2;
-const ATTRACTED_COUNT = 16;
+const MAX_ATTRACTED_COUNT = 16;
+const MOUSE_ATTRACTION_RADIUS = 260;
 const PARTICLE_LINK_DISTANCE = 110;
 const PARTICLE_REPULSION_RADIUS = 36;
 const PARTICLE_REPULSION_STRENGTH = 1.4;
@@ -42,63 +43,12 @@ const NON_BACKGROUND_SELECTOR = [
   '#oml2d-stage',
 ].join(', ');
 
-/** 随机分布：左右非卡片区域各约 45%，中央卡片区域约 10% */
+/** 全屏均匀随机分布，不区分左右、中央或卡片区域 */
 export function randomDustX(random: () => number): number {
-  const region = random();
-  if (region < 0.45) return 3 + random() * 22;
-  if (region < 0.9) return 75 + random() * 22;
-  return 32 + random() * 36;
+  return random() * 100;
 }
 
-export interface CardRect {
-  left: number;
-  right: number;
-  top: number;
-  bottom: number;
-}
-
-interface DustRegion {
-  baseX: number;
-  baseY: number;
-  regionRadiusX: number;
-  regionRadiusY: number;
-}
-
-/** 两侧候选避开卡片，中央候选直接放行以保留少量卡片点缀 */
-export function randomDustRegion(
-  random: () => number,
-  width: number,
-  height: number,
-  cardRects: CardRect[],
-): DustRegion {
-  let best: (DustRegion & { overlaps: number }) | null = null;
-  for (let attempt = 0; attempt < 24; attempt++) {
-    // 多次避让失败时缩小区域，优先保留随机分布而不是集中堆到空白区
-    const shrink = attempt < 12 ? 1 : 0.65;
-    const regionRadiusX = (48 + random() * 42) * shrink;
-    const regionRadiusY = (36 + random() * 30) * shrink;
-    const ratio = randomDustX(random) / 100;
-    const candidate = {
-      baseX: regionRadiusX + ratio * Math.max(1, width - regionRadiusX * 2),
-      baseY: regionRadiusY + random() * Math.max(1, height - regionRadiusY * 2),
-      regionRadiusX,
-      regionRadiusY,
-    };
-    const central = ratio >= 0.32 && ratio <= 0.68;
-    if (central) return candidate;
-    const overlaps = cardRects.filter((rect) => (
-      candidate.baseX + regionRadiusX >= rect.left
-      && candidate.baseX - regionRadiusX <= rect.right
-      && candidate.baseY + regionRadiusY >= rect.top
-      && candidate.baseY - regionRadiusY <= rect.bottom
-    )).length;
-    if (overlaps === 0) return candidate;
-    if (!best || overlaps < best.overlaps) best = { ...candidate, overlaps };
-  }
-  return best ?? { baseX: width / 2, baseY: height / 2, regionRadiusX: 24, regionRadiusY: 24 };
-}
-
-/** Canvas 柔光尘：固定 128 个粒子随机分布于独立椭圆区域，最近 16 个可被牵引 */
+/** Canvas 柔光尘：固定 128 个粒子随机分布于独立椭圆区域，260px 内最多牵引 16 个 */
 export default function SakuraEffect({ count = 128 }: { count?: number }) {
   const sakura = useThemeStore((s) => s.sakura);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -118,7 +68,6 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
     let particles: DustParticle[] = [];
     let attractionQueue: DustParticle[] = [];
     let frame = 0;
-    let layoutTimer = 0;
     let lastTime = performance.now();
 
     const readColors = () => {
@@ -127,8 +76,11 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
       primaryLight = style.getPropertyValue('--primary-light').trim();
     };
 
-    const createParticle = (cardRects: CardRect[]): DustParticle => {
-      const { baseX, baseY, regionRadiusX, regionRadiusY } = randomDustRegion(Math.random, width, height, cardRects);
+    const createParticle = (): DustParticle => {
+      const regionRadiusX = 48 + Math.random() * 42;
+      const regionRadiusY = 36 + Math.random() * 30;
+      const baseX = regionRadiusX + randomDustX(Math.random) / 100 * Math.max(1, width - regionRadiusX * 2);
+      const baseY = regionRadiusY + Math.random() * Math.max(1, height - regionRadiusY * 2);
       return {
         mode: 'ambient',
         baseX,
@@ -203,20 +155,8 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
       canvas.height = Math.round(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       attractionQueue = [];
-      const cardRects = [...document.querySelectorAll<HTMLElement>('.card')].map((el) => {
-        const rect = el.getBoundingClientRect();
-        return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
-      });
-      particles = width < 768 ? [] : Array.from({ length: count }, () => createParticle(cardRects));
+      particles = width < 768 ? [] : Array.from({ length: count }, () => createParticle());
       if (reduceMotion) draw(performance.now() / 1000);
-    };
-
-    const scheduleLayoutRefresh = () => {
-      if (layoutTimer) window.clearTimeout(layoutTimer);
-      layoutTimer = window.setTimeout(() => {
-        layoutTimer = 0;
-        resize();
-      }, 200);
     };
 
     const updatePointerMode = (target: Element | null) => {
@@ -249,21 +189,29 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
       attractionQueue = [];
     };
     const updateAttractionQueue = () => {
-      // 鼠标移动时，从当前牵引粒子与环境粒子中重新选出最近的 16 个
+      // 只从 260px 内选取最近粒子，不足 16 个时不从远处补足
       const candidates = [
         ...attractionQueue,
         ...particles.filter((p) => p.mode === 'ambient'),
-      ];
+      ].filter((p) => Math.hypot(p.x - pointer.x, p.y - pointer.y) <= MOUSE_ATTRACTION_RADIUS);
       const nearest = candidates
         .sort((a, b) => Math.hypot(a.x - pointer.x, a.y - pointer.y)
           - Math.hypot(b.x - pointer.x, b.y - pointer.y))
-        .slice(0, ATTRACTED_COUNT);
+        .slice(0, MAX_ATTRACTED_COUNT);
       const selected = new Set(nearest);
       attractionQueue.forEach((p) => {
         if (!selected.has(p)) release(p);
       });
       nearest.forEach((p) => { p.mode = 'attracted'; });
       attractionQueue = nearest;
+    };
+
+    const releaseOutOfRange = () => {
+      attractionQueue = attractionQueue.filter((p) => {
+        const inRange = Math.hypot(p.x - pointer.x, p.y - pointer.y) <= MOUSE_ATTRACTION_RADIUS;
+        if (!inRange) release(p);
+        return inRange;
+      });
     };
 
     const applyRepulsion = (step: number) => {
@@ -303,7 +251,10 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
       const time = now / 1000;
       lastTime = now;
       if (pointer.attract) {
-        if (pointer.moved || attractionQueue.length === 0) updateAttractionQueue();
+        releaseOutOfRange();
+        const hasNearbyAmbient = particles.some((p) => p.mode === 'ambient'
+          && Math.hypot(p.x - pointer.x, p.y - pointer.y) <= MOUSE_ATTRACTION_RADIUS);
+        if (pointer.moved || (attractionQueue.length === 0 && hasNearbyAmbient)) updateAttractionQueue();
       } else if (attractionQueue.length) releaseAll();
       pointer.moved = false;
 
@@ -335,16 +286,6 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
       if (reduceMotion) draw(performance.now() / 1000);
     });
     themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'style'] });
-    const cardObserver = new MutationObserver((mutations) => {
-      const cardChanged = mutations.some((mutation) => (
-        [...mutation.addedNodes, ...mutation.removedNodes].some((node) => (
-          node instanceof HTMLElement
-          && (node.classList.contains('card') || !!node.querySelector('.card'))
-        ))
-      ));
-      if (cardChanged) scheduleLayoutRefresh();
-    });
-    cardObserver.observe(document.body, { childList: true, subtree: true });
     window.addEventListener('resize', resize);
 
     if (!reduceMotion) {
@@ -363,8 +304,6 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
       window.removeEventListener('scroll', onScroll);
       document.documentElement.removeEventListener('mouseleave', disablePointer);
       themeObserver.disconnect();
-      cardObserver.disconnect();
-      if (layoutTimer) window.clearTimeout(layoutTimer);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     };
