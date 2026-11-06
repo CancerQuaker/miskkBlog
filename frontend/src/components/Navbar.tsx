@@ -139,8 +139,8 @@ function AppearancePanel() {
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-faint)', margin: '14px 0 4px' }}>特效</div>
       <div className="effect-row">
         <div className="effect-info">
-          <div className="effect-label">✦ 星空氛围</div>
-          <div className="effect-desc">漫天星星随机闪烁</div>
+          <div className="effect-label">◌ 微光氛围</div>
+          <div className="effect-desc">柔光尘缓慢漂浮</div>
         </div>
         <Switch size="small" checked={sakura} onChange={setSakura} />
       </div>

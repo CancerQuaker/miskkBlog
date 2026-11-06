@@ -19,7 +19,7 @@ interface ThemeState {
   mode: ThemeMode;
   /** 自定义主题色（hex），null 表示用各主题内置色 */
   accent: string | null;
-  /** 特效开关：星空闪烁 / 星星鼠标样式 / Live2D 看板娘 */
+  /** 特效开关：柔光尘背景 / 星星鼠标样式 / Live2D 看板娘 */
   sakura: boolean;
   starCursor: boolean;
   live2d: boolean;

@@ -1062,7 +1062,7 @@ a {
   animation: bubblePop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
-/* ---------- 星空闪烁特效 ---------- */
+/* ---------- 柔光尘背景 ---------- */
 .starfield-stage {
   position: absolute;
   inset: 0;
@@ -1070,19 +1070,41 @@ a {
   pointer-events: none;
   overflow: hidden;
 }
-.starfield-star {
+.starfield-dust-layer {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+.starfield-dust {
   position: absolute;
   contain: layout style;
   will-change: opacity, transform;
-  background: var(--primary);
-  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
-  animation: starTwinkle 2.6s ease-in-out infinite;
+  border-radius: 50%;
+  background: var(--primary-light);
+  box-shadow: 0 0 7px 1px var(--primary-light);
+  filter: blur(0.2px);
+  opacity: 0.05;
+  animation: dustFloat 18s ease-in-out infinite;
+}
+@keyframes dustFloat {
+  0%,
+  100% {
+    opacity: 0.05;
+    transform: translate3d(0, 10px, 0) scale(0.85);
+  }
+  50% {
+    opacity: var(--dust-opacity, 0.2);
+    transform: translate3d(var(--dust-drift-x, 0), -18px, 0) scale(1);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .starfield-star {
+  .starfield-dust-layer {
+    transform: none !important;
+  }
+  .starfield-dust {
     animation: none;
-    opacity: 0.4;
-    transform: scale(0.9);
+    opacity: 0.12;
+    transform: none;
   }
 }
 

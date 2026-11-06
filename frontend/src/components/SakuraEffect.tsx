@@ -1,48 +1,68 @@
 import { useEffect, useRef } from 'react';
 import { useThemeStore } from '../stores/themeStore';
 
-/** 80% 星星分布在左右边缘，20% 点缀中央阅读区 */
-export function randomStarX(random: () => number): number {
+/** 80% 光尘分布在左右边缘，20% 点缀中央阅读区 */
+export function randomDustX(random: () => number): number {
   const region = random();
   if (region < 0.4) return 3 + random() * 22;
   if (region < 0.8) return 75 + random() * 22;
   return 32 + random() * 36;
 }
 
-/** 星空闪烁特效（横幅同款 CSS 动画，每轮最暗时随机换位），外观面板可开关 */
-export default function SakuraEffect({ count = 48 }: { count?: number }) {
+/** 柔光尘背景：细小圆点缓慢漂浮，滚动时带轻微视差，外观面板可开关 */
+export default function SakuraEffect({ count = 64 }: { count?: number }) {
   const sakura = useThemeStore((s) => s.sakura);
   const stageRef = useRef<HTMLDivElement>(null);
+  const layerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!sakura || window.innerWidth < 768) return;
     const stage = stageRef.current;
-    if (!stage) return;
+    const layer = layerRef.current;
+    if (!stage || !layer) return;
 
-    const stars: { el: HTMLDivElement; reposition: () => void }[] = [];
+    const particles: HTMLDivElement[] = [];
     for (let i = 0; i < count; i++) {
       const el = document.createElement('div');
-      const size = 12 + Math.random() * 10;
-      const reposition = () => {
-        el.style.left = `${randomStarX(Math.random)}%`;
-        el.style.top = `${Math.random() * 100}%`;
-      };
-      el.className = 'starfield-star';
-      reposition();
+      const size = 1 + Math.random() * 2;
+      const duration = 14 + Math.random() * 10;
+      el.className = 'starfield-dust';
+      el.style.left = `${randomDustX(Math.random)}%`;
+      el.style.top = `${Math.random() * 100}%`;
       el.style.width = `${size}px`;
       el.style.height = `${size}px`;
-      el.style.animationDuration = '2.6s';
-      el.style.animationDelay = `${-Math.random() * 2.6}s`;
-      el.addEventListener('animationiteration', reposition);
-      stage.appendChild(el);
-      stars.push({ el, reposition });
+      el.style.setProperty('--dust-drift-x', `${-14 + Math.random() * 28}px`);
+      el.style.setProperty('--dust-opacity', `${0.12 + Math.random() * 0.14}`);
+      el.style.animationDuration = `${duration}s`;
+      el.style.animationDelay = `${-Math.random() * duration}s`;
+      layer.appendChild(el);
+      particles.push(el);
     }
 
-    return () => stars.forEach(({ el, reposition }) => {
-      el.removeEventListener('animationiteration', reposition);
-      el.remove();
-    });
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let frame = 0;
+    const updateParallax = () => {
+      frame = 0;
+      layer.style.transform = `translate3d(0, ${window.scrollY * 0.035}px, 0)`;
+    };
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(updateParallax);
+    };
+    if (!reduceMotion) {
+      updateParallax();
+      window.addEventListener('scroll', onScroll, { passive: true });
+    }
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (frame) window.cancelAnimationFrame(frame);
+      particles.forEach((el) => el.remove());
+    };
   }, [sakura, count]);
 
-  return <div ref={stageRef} className="starfield-stage" aria-hidden />;
+  return (
+    <div ref={stageRef} className="starfield-stage" aria-hidden>
+      <div ref={layerRef} className="starfield-dust-layer" />
+    </div>
+  );
 }
