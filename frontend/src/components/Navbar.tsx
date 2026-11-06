@@ -140,7 +140,7 @@ function AppearancePanel() {
       <div className="effect-row">
         <div className="effect-info">
           <div className="effect-label">◌ 微光氛围</div>
-          <div className="effect-desc">柔光尘缓慢漂浮</div>
+          <div className="effect-desc">背景牵引 · 卡片漂浮</div>
         </div>
         <Switch size="small" checked={sakura} onChange={setSakura} />
       </div>
