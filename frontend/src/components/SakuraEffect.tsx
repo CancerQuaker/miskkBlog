@@ -6,6 +6,7 @@ interface DustParticle {
   baseY: number;
   x: number;
   y: number;
+  pull: number;
   radius: number;
   maxAlpha: number;
   phase: number;
@@ -18,6 +19,7 @@ interface DustParticle {
 }
 
 const TAU = Math.PI * 2;
+const ATTRACTION_RADIUS = 220;
 /** 卡片与浮层保持环境漂浮，只有页面背景及留白触发指针牵引 */
 const NON_BACKGROUND_SELECTOR = [
   '.card',
@@ -40,8 +42,8 @@ export function randomDustX(random: () => number): number {
   return 32 + random() * 36;
 }
 
-/** Canvas 柔光尘：卡片区域随机漂浮，页面背景以鼠标为中心牵引 */
-export default function SakuraEffect({ count = 64 }: { count?: number }) {
+/** Canvas 柔光尘：卡片区域随机漂浮，页面背景仅牵引鼠标附近的光尘 */
+export default function SakuraEffect({ count = 88 }: { count?: number }) {
   const sakura = useThemeStore((s) => s.sakura);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -58,7 +60,6 @@ export default function SakuraEffect({ count = 64 }: { count?: number }) {
     let primary = '';
     let primaryLight = '';
     let particles: DustParticle[] = [];
-    let pull = 0;
     let frame = 0;
     let lastTime = performance.now();
     let lastScrollY = window.scrollY;
@@ -77,6 +78,7 @@ export default function SakuraEffect({ count = 64 }: { count?: number }) {
         baseY,
         x: baseX,
         y: baseY,
+        pull: 0,
         radius: 1 + Math.random() * 1.5,
         maxAlpha: 0.45 + Math.random() * 0.25,
         phase: Math.random() * TAU,
@@ -96,9 +98,9 @@ export default function SakuraEffect({ count = 64 }: { count?: number }) {
       ctx.shadowBlur = 7;
       for (const p of particles) {
         const pulse = 0.5 + 0.5 * Math.sin(time * 0.8 + p.phase);
-        ctx.globalAlpha = Math.min(0.85, (0.18 + (p.maxAlpha - 0.18) * pulse) * (1 + pull * 0.15));
+        ctx.globalAlpha = Math.min(0.85, (0.18 + (p.maxAlpha - 0.18) * pulse) * (1 + p.pull * 0.15));
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius * (1 + pull * 0.12), 0, TAU);
+        ctx.arc(p.x, p.y, p.radius * (1 + p.pull * 0.12), 0, TAU);
         ctx.fill();
       }
       ctx.globalAlpha = 1;
@@ -156,17 +158,20 @@ export default function SakuraEffect({ count = 64 }: { count?: number }) {
       const step = Math.min(dt * 60, 2);
       const time = now / 1000;
       lastTime = now;
-      pull += ((pointer.attract ? 1 : 0) - pull) * (1 - Math.pow(0.9, step));
 
       for (const p of particles) {
-        p.orbitAngle += p.orbitSpeed * dt * (0.25 + pull);
+        // 每颗粒子独立计算牵引强度，范围外始终保持环境漂浮
+        const nearPointer = pointer.attract
+          && Math.hypot(p.x - pointer.x, p.y - pointer.y) <= ATTRACTION_RADIUS;
+        p.pull += ((nearPointer ? 1 : 0) - p.pull) * (1 - Math.pow(0.9, step));
+        p.orbitAngle += p.orbitSpeed * dt * (0.25 + p.pull);
         const ambientX = p.baseX + Math.sin(time * p.driftSpeed + p.phase) * p.driftX;
         const ambientY = p.baseY + Math.cos(time * p.driftSpeed * 0.8 + p.phase) * p.driftY;
         const orbitX = pointer.x + Math.cos(p.orbitAngle) * p.orbitRadius;
         const orbitY = pointer.y + Math.sin(p.orbitAngle) * p.orbitRadius * 0.68;
-        const targetX = ambientX + (orbitX - ambientX) * pull;
-        const targetY = ambientY + (orbitY - ambientY) * pull;
-        const ease = 1 - Math.pow(1 - (0.018 + pull * 0.065), step);
+        const targetX = ambientX + (orbitX - ambientX) * p.pull;
+        const targetY = ambientY + (orbitY - ambientY) * p.pull;
+        const ease = 1 - Math.pow(1 - (0.018 + p.pull * 0.065), step);
         p.x += (targetX - p.x) * ease;
         p.y += (targetY - p.y) * ease;
       }
