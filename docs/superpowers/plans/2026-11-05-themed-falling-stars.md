@@ -1,5 +1,7 @@
 # 主题色星空闪烁 Implementation Plan
 
+> **历史方案（已归档，请勿继续实施）**：本文记录旧的 DOM 四角星闪烁方案，不再描述当前实现。当前 Canvas 固定区域柔光尘见 `../specs/2026-11-07-canvas-dust-design.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 让横幅同款闪烁星星在每轮最暗时随机换位，避免永久固定坐标。

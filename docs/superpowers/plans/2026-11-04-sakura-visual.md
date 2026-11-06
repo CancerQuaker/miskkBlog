@@ -1,5 +1,7 @@
 # 飘落物视觉优化 Implementation Plan
 
+> **历史方案（已归档，请勿继续实施）**：本文记录旧的 DOM 樱花飘落方案，不再描述当前实现。当前 Canvas 固定区域柔光尘见 `../specs/2026-11-07-canvas-dust-design.md`。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 将樱花调整为低存在感的柔和背景装饰，同时保证长期运行不增加 DOM 节点。

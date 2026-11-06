@@ -204,7 +204,7 @@ INSERT INTO t_article (id, title, summary, content, category_id, author_id, stat
                        views, likes, comments, shares, created_at, updated_at, published_at)
 VALUES (1, '迷失客客の博客正式开张啦捏~',
         '欢迎来到迷失客客の博客！本站基于 Spring Boot + Vite React 打造，仙狐看板娘、魔法星星光标和原神崩铁 Q 版小伙伴等你来玩。',
-        '# 欢迎来到迷失客客の博客捏~\n\n这是一个用 **Spring Boot 3.3** + **Vite + React 18** 打造的二次元风格博客。\n\n## 站点特色\n\n- 🦊 仙狐小姐 Live2D 看板娘，眼睛会跟着鼠标转\n- ✨ 魔法星星鼠标指针：星星拖尾，左键蹦出字符，右键蹦颜文字\n- 🌸 樱花飘落特效 + 八种主题色随心换\n- 🎈 原神派蒙、崩铁三月七 Q 版小伙伴在站内各处出没\n- 🌗 亮色 / 暗色 / 护眼三种主题\n- 🎵 右上角还有音乐播放器\n\n## 技术栈\n\n| 端 | 技术 |\n|----|------|\n| 前端 | Vite + React + Ant Design |\n| 后端 | Spring Boot 单体应用 |\n| 数据 | PostgreSQL 单库 + Redis 缓存 |\n\n> 觉得不错的话，给文章点个赞再走叭！',
+        '# 欢迎来到迷失客客の博客捏~\n\n这是一个用 **Spring Boot 3.3** + **Vite + React 18** 打造的二次元风格博客。\n\n## 站点特色\n\n- 🦊 仙狐小姐 Live2D 看板娘，眼睛会跟着鼠标转\n- ✨ 魔法星星鼠标指针：星星拖尾，左键蹦出字符，右键蹦颜文字\n- ✨ Canvas 柔光尘：固定区域漂浮、鼠标牵引与粒子连线 + 八种主题色随心换\n- 🎈 原神派蒙、崩铁三月七 Q 版小伙伴在站内各处出没\n- 🌗 亮色 / 暗色 / 护眼三种主题\n- 🎵 右上角还有音乐播放器\n\n## 技术栈\n\n| 端 | 技术 |\n|----|------|\n| 前端 | Vite + React + Ant Design |\n| 后端 | Spring Boot 单体应用 |\n| 数据 | PostgreSQL 单库 + Redis 缓存 |\n\n> 觉得不错的话，给文章点个赞再走叭！',
         1, 1, 1, 1, 268, 12, 5, 4,
         NOW() - INTERVAL '27 day', NOW() - INTERVAL '27 day', NOW() - INTERVAL '27 day'),
        (2, 'Spring Boot 单体博客后端设计',
@@ -232,7 +232,7 @@ INSERT INTO t_comment (id, article_id, user_id, parent_id, reply_user_id, conten
     (1,  1, 11, NULL, NULL, '站开了必须第一个来踩场子！仙狐小姐摸头的时候会发出「咕噜咕噜」的声音吗 (≧▽≦)', (CURRENT_DATE - 13) + TIME '21:30:00', (CURRENT_DATE - 13) + TIME '21:30:00'),
     (2,  1, 12, NULL, NULL, '星星光标太上头了，一路蹦字符，被同事问了好几次用的什么输入法 www', (CURRENT_DATE - 11) + TIME '12:47:00', (CURRENT_DATE - 11) + TIME '12:47:00'),
     (3,  2, 14, NULL, NULL, '一个拦截器管住登录态和权限，鉴权收敛在一处这个设计好优雅，抄走了！', (CURRENT_DATE - 10) + TIME '15:12:00', (CURRENT_DATE - 10) + TIME '15:12:00'),
-    (4,  1, 13, NULL, NULL, '护眼主题 + 樱花特效，通勤路上刷博客眼睛终于不用受罪了，已加入书签捏~', (CURRENT_DATE - 9) + TIME '08:05:00', (CURRENT_DATE - 9) + TIME '08:05:00'),
+    (4,  1, 13, NULL, NULL, '护眼主题 + 柔光尘背景，通勤路上刷博客眼睛终于不用受罪了，已加入书签捏~', (CURRENT_DATE - 9) + TIME '08:05:00', (CURRENT_DATE - 9) + TIME '08:05:00'),
     (5,  3, 12, NULL, NULL, '右键蹦颜文字笑死，刚才对着桌面点了一分钟 (´∀`)', (CURRENT_DATE - 8) + TIME '22:41:00', (CURRENT_DATE - 8) + TIME '22:41:00'),
     (6,  2, 15, NULL, NULL, '30 秒批量落库那步，服务重启的时候缓冲里的浏览量会丢吗？', (CURRENT_DATE - 7) + TIME '10:26:00', (CURRENT_DATE - 7) + TIME '10:26:00'),
     (7,  1, 1,  1,    11,   '摸头会触发 TapHead 动作，试试就知道啦，她还会歪头看你哦~', (CURRENT_DATE - 6) + TIME '19:58:00', (CURRENT_DATE - 6) + TIME '19:58:00'),

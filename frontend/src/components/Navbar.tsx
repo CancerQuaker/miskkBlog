@@ -81,7 +81,7 @@ function BrightnessPanel() {
   );
 }
 
-/** 外观面板：主题色 + 特效开关（飘落物 / 鼠标样式 / 看板娘） */
+/** 外观面板：主题色 + 特效开关（背景光尘 / 鼠标样式 / 看板娘） */
 function AppearancePanel() {
   const { accent, setAccent, sakura, setSakura, starCursor, setStarCursor, live2d, setLive2d } =
     useThemeStore();
@@ -140,7 +140,7 @@ function AppearancePanel() {
       <div className="effect-row">
         <div className="effect-info">
           <div className="effect-label">◌ 微光氛围</div>
-          <div className="effect-desc">背景牵引 · 卡片漂浮</div>
+          <div className="effect-desc">固定区域 · 近距牵引</div>
         </div>
         <Switch size="small" checked={sakura} onChange={setSakura} />
       </div>

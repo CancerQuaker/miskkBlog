@@ -50,7 +50,7 @@ export function randomDustX(random: () => number): number {
   return 32 + random() * 36;
 }
 
-/** Canvas 柔光尘：固定区域运动，牵引不能将粒子带离自己的区域 */
+/** Canvas 柔光尘：默认 128 个粒子在独立椭圆区域运动，最近 16 个可被牵引，不生成补充粒子 */
 export default function SakuraEffect({ count = 128 }: { count?: number }) {
   const sakura = useThemeStore((s) => s.sakura);
   const canvasRef = useRef<HTMLCanvasElement>(null);

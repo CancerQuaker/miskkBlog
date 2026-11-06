@@ -17,7 +17,7 @@ export const aboutConfig = {
     name: '迷失客客',
     avatarText: '客',
     bio: '一只喜欢写代码的小狐狸 | 后端 / 前端 / 摸鱼',
-    skills: ['Java', 'Spring Boot', 'React', 'TypeScript', 'MySQL', 'Redis', 'Nacos'],
+    skills: ['Java', 'Spring Boot', 'React', 'TypeScript', 'PostgreSQL', 'Redis', 'MyBatis-Plus'],
     socials: {
       github: 'https://github.com/miskk',
       bilibili: 'https://space.bilibili.com',
@@ -27,7 +27,7 @@ export const aboutConfig = {
   project: {
     intro: [
       '本项目是一个完全开源的二次元风格博客系统，前端基于 Vite + React 18 + Ant Design 5，后端为 Spring Boot 3.3 单体应用（无注册中心、单进程部署），数据层为 PostgreSQL 单库（全部表统一存放），缓存使用 Redis，接口文档由 Knife4j 提供。',
-      '站点特色：魔法星星鼠标指针（星星拖尾、左键掉落富强/民主/文明/和谐等字符）、自定义右键菜单（返回/复制/另存/检查）、小狐狸 Live2D 看板娘（仙狐小姐）、纳西妲主题首页横幅、蓝紫梦幻主题、主题色柔光尘背景、亮/暗/护眼三主题、文章评论点赞分享、友链申请审核、ECharts 数据看板与系统资源监控。',
+      '站点特色：魔法星星鼠标指针（星星拖尾、左键掉落富强/民主/文明/和谐等字符）、自定义右键菜单（返回/复制/另存/检查）、小狐狸 Live2D 看板娘（仙狐小姐）、纳西妲主题首页横幅、草绿默认主题色、Canvas 柔光尘（固定区域漂浮、最近粒子牵引、粒子互斥与连线）、亮/暗/护眼/跟随系统四种主题模式、文章评论点赞分享、友链申请审核、ECharts 数据看板与系统资源监控。',
       '后端按 controller → handler → service 分层，统一鉴权拦截器负责 JWT 解析与权限校验，覆盖用户、文章、评论、友链与管理端（统计/监控）全部能力；浏览量等高频写入经 Redis 缓冲后批量落库。',
     ],
     techs: [
