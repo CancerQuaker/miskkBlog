@@ -24,7 +24,7 @@ export default function SakuraEffect({ count = 64 }: { count?: number }) {
     const particles: HTMLDivElement[] = [];
     for (let i = 0; i < count; i++) {
       const el = document.createElement('div');
-      const size = 1 + Math.random() * 2;
+      const size = 2 + Math.random() * 3;
       const duration = 14 + Math.random() * 10;
       el.className = 'starfield-dust';
       el.style.left = `${randomDustX(Math.random)}%`;
@@ -32,7 +32,7 @@ export default function SakuraEffect({ count = 64 }: { count?: number }) {
       el.style.width = `${size}px`;
       el.style.height = `${size}px`;
       el.style.setProperty('--dust-drift-x', `${-14 + Math.random() * 28}px`);
-      el.style.setProperty('--dust-opacity', `${0.12 + Math.random() * 0.14}`);
+      el.style.setProperty('--dust-opacity', `${0.45 + Math.random() * 0.25}`);
       el.style.animationDuration = `${duration}s`;
       el.style.animationDelay = `${-Math.random() * duration}s`;
       layer.appendChild(el);
