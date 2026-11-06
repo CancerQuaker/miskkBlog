@@ -28,8 +28,6 @@ public class ArticleDetailVO {
     private Boolean liked;
     /** 字数 */
     private Long wordCount;
-    /** 预计阅读分钟数 */
-    private Long readingMinutes;
     private LocalDateTime publishedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

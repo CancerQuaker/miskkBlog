@@ -46,6 +46,8 @@ export default function ArticleDetailPage() {
     return <div style={{ textAlign: 'center', padding: 120 }}><Spin size="large" /></div>;
   }
 
+  const readingMinutes = Math.max(1, Math.floor(article.wordCount / 400));
+
   const likeChange = (isLiked: boolean, count: number) => {
     setLiked(isLiked);
     setArticle({ ...article, likes: count });
@@ -101,7 +103,7 @@ export default function ArticleDetailPage() {
               <span><EyeOutlined /> {article.views} 浏览</span>
               <span><MessageOutlined /> {article.comments} 评论</span>
               <span><ShareAltOutlined /> {article.shares} 分享</span>
-              <span><FileTextOutlined /> {article.readingMinutes} 分钟阅读</span>
+              <span><FileTextOutlined /> {readingMinutes} 分钟阅读</span>
             </div>
 
             <div style={{ display: 'flex', gap: 8, margin: '14px 0 4px', flexWrap: 'wrap' }}>
