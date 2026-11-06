@@ -50,6 +50,54 @@ export function randomDustX(random: () => number): number {
   return 32 + random() * 36;
 }
 
+export interface CardRect {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+interface DustRegion {
+  baseX: number;
+  baseY: number;
+  regionRadiusX: number;
+  regionRadiusY: number;
+}
+
+/** 两侧候选避开卡片，中央候选直接放行以保留少量卡片点缀 */
+export function randomDustRegion(
+  random: () => number,
+  width: number,
+  height: number,
+  cardRects: CardRect[],
+): DustRegion {
+  let best: (DustRegion & { overlaps: number }) | null = null;
+  for (let attempt = 0; attempt < 24; attempt++) {
+    // 多次避让失败时缩小区域，优先保留随机分布而不是集中堆到空白区
+    const shrink = attempt < 12 ? 1 : 0.65;
+    const regionRadiusX = (48 + random() * 42) * shrink;
+    const regionRadiusY = (36 + random() * 30) * shrink;
+    const ratio = randomDustX(random) / 100;
+    const candidate = {
+      baseX: regionRadiusX + ratio * Math.max(1, width - regionRadiusX * 2),
+      baseY: regionRadiusY + random() * Math.max(1, height - regionRadiusY * 2),
+      regionRadiusX,
+      regionRadiusY,
+    };
+    const central = ratio >= 0.32 && ratio <= 0.68;
+    if (central) return candidate;
+    const overlaps = cardRects.filter((rect) => (
+      candidate.baseX + regionRadiusX >= rect.left
+      && candidate.baseX - regionRadiusX <= rect.right
+      && candidate.baseY + regionRadiusY >= rect.top
+      && candidate.baseY - regionRadiusY <= rect.bottom
+    )).length;
+    if (overlaps === 0) return candidate;
+    if (!best || overlaps < best.overlaps) best = { ...candidate, overlaps };
+  }
+  return best ?? { baseX: width / 2, baseY: height / 2, regionRadiusX: 24, regionRadiusY: 24 };
+}
+
 /** Canvas 柔光尘：固定 128 个粒子随机分布于独立椭圆区域，最近 16 个可被牵引 */
 export default function SakuraEffect({ count = 128 }: { count?: number }) {
   const sakura = useThemeStore((s) => s.sakura);
@@ -70,6 +118,7 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
     let particles: DustParticle[] = [];
     let attractionQueue: DustParticle[] = [];
     let frame = 0;
+    let layoutTimer = 0;
     let lastTime = performance.now();
 
     const readColors = () => {
@@ -78,11 +127,8 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
       primaryLight = style.getPropertyValue('--primary-light').trim();
     };
 
-    const createParticle = (): DustParticle => {
-      const regionRadiusX = 48 + Math.random() * 42;
-      const regionRadiusY = 36 + Math.random() * 30;
-      const baseX = regionRadiusX + randomDustX(Math.random) / 100 * Math.max(1, width - regionRadiusX * 2);
-      const baseY = regionRadiusY + Math.random() * Math.max(1, height - regionRadiusY * 2);
+    const createParticle = (cardRects: CardRect[]): DustParticle => {
+      const { baseX, baseY, regionRadiusX, regionRadiusY } = randomDustRegion(Math.random, width, height, cardRects);
       return {
         mode: 'ambient',
         baseX,
@@ -157,8 +203,20 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
       canvas.height = Math.round(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       attractionQueue = [];
-      particles = width < 768 ? [] : Array.from({ length: count }, () => createParticle());
+      const cardRects = [...document.querySelectorAll<HTMLElement>('.card')].map((el) => {
+        const rect = el.getBoundingClientRect();
+        return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+      });
+      particles = width < 768 ? [] : Array.from({ length: count }, () => createParticle(cardRects));
       if (reduceMotion) draw(performance.now() / 1000);
+    };
+
+    const scheduleLayoutRefresh = () => {
+      if (layoutTimer) window.clearTimeout(layoutTimer);
+      layoutTimer = window.setTimeout(() => {
+        layoutTimer = 0;
+        resize();
+      }, 200);
     };
 
     const updatePointerMode = (target: Element | null) => {
@@ -277,6 +335,16 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
       if (reduceMotion) draw(performance.now() / 1000);
     });
     themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'style'] });
+    const cardObserver = new MutationObserver((mutations) => {
+      const cardChanged = mutations.some((mutation) => (
+        [...mutation.addedNodes, ...mutation.removedNodes].some((node) => (
+          node instanceof HTMLElement
+          && (node.classList.contains('card') || !!node.querySelector('.card'))
+        ))
+      ));
+      if (cardChanged) scheduleLayoutRefresh();
+    });
+    cardObserver.observe(document.body, { childList: true, subtree: true });
     window.addEventListener('resize', resize);
 
     if (!reduceMotion) {
@@ -295,6 +363,8 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
       window.removeEventListener('scroll', onScroll);
       document.documentElement.removeEventListener('mouseleave', disablePointer);
       themeObserver.disconnect();
+      cardObserver.disconnect();
+      if (layoutTimer) window.clearTimeout(layoutTimer);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     };
