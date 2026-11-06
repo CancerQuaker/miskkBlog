@@ -27,7 +27,7 @@ const TAU = Math.PI * 2;
 const ATTRACTED_COUNT = 16;
 const PARTICLE_LINK_DISTANCE = 110;
 const PARTICLE_REPULSION_RADIUS = 36;
-const PARTICLE_REPULSION_STRENGTH = 0.65;
+const PARTICLE_REPULSION_STRENGTH = 1.4;
 /** 卡片与浮层保持环境漂浮，只有页面背景及留白触发指针牵引 */
 const NON_BACKGROUND_SELECTOR = [
   '.card',
