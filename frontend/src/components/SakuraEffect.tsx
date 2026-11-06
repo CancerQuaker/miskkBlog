@@ -1,17 +1,17 @@
 import { useEffect, useRef } from 'react';
 import { useThemeStore } from '../stores/themeStore';
 
-type ParticleMode = 'ambient' | 'attracted' | 'retiring';
+type ParticleMode = 'ambient' | 'attracted';
 
 interface DustParticle {
   mode: ParticleMode;
   baseX: number;
   baseY: number;
+  regionRadiusX: number;
+  regionRadiusY: number;
   x: number;
   y: number;
   pull: number;
-  fade: number;
-  availableAt: number;
   radius: number;
   maxAlpha: number;
   phase: number;
@@ -19,13 +19,12 @@ interface DustParticle {
   driftX: number;
   driftY: number;
   orbitAngle: number;
+  orbitRadius: number;
   orbitSpeed: number;
 }
 
 const TAU = Math.PI * 2;
 const ATTRACTED_COUNT = 16;
-const MOUSE_INNER_RADIUS = 60;
-const MOUSE_OUTER_RADIUS = 200;
 const PARTICLE_LINK_DISTANCE = 110;
 const PARTICLE_REPULSION_RADIUS = 36;
 const PARTICLE_REPULSION_STRENGTH = 0.65;
@@ -51,7 +50,7 @@ export function randomDustX(random: () => number): number {
   return 32 + random() * 36;
 }
 
-/** Canvas 柔光尘：固定数量牵引，原区域自动补充，卡片区域始终随机漂浮 */
+/** Canvas 柔光尘：固定区域运动，牵引不能将粒子带离自己的区域 */
 export default function SakuraEffect({ count = 128 }: { count?: number }) {
   const sakura = useThemeStore((s) => s.sakura);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -72,8 +71,6 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
     let attractionQueue: DustParticle[] = [];
     let frame = 0;
     let lastTime = performance.now();
-    let lastScrollY = window.scrollY;
-    let ringVisibility = 0;
 
     const readColors = () => {
       const style = getComputedStyle(document.documentElement);
@@ -81,51 +78,38 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
       primaryLight = style.getPropertyValue('--primary-light').trim();
     };
 
-    const createParticle = (
-      baseX = randomDustX(Math.random) / 100 * width,
-      baseY = Math.random() * height,
-      fade = 1,
-    ): DustParticle => ({
-      mode: 'ambient',
-      baseX,
-      baseY,
-      x: baseX,
-      y: baseY,
-      pull: 0,
-      fade,
-      availableAt: 0,
-      radius: 1 + Math.random() * 1.5,
-      maxAlpha: 0.45 + Math.random() * 0.25,
-      phase: Math.random() * TAU,
-      driftSpeed: 0.2 + Math.random() * 0.35,
-      driftX: 8 + Math.random() * 16,
-      driftY: 10 + Math.random() * 20,
-      orbitAngle: Math.random() * TAU,
-      orbitSpeed: (0.25 + Math.random() * 0.5) * (Math.random() < 0.5 ? -1 : 1),
-    });
+    const createParticle = (): DustParticle => {
+      const regionRadiusX = 48 + Math.random() * 42;
+      const regionRadiusY = 36 + Math.random() * 30;
+      const baseX = regionRadiusX + randomDustX(Math.random) / 100 * Math.max(1, width - regionRadiusX * 2);
+      const baseY = regionRadiusY + Math.random() * Math.max(1, height - regionRadiusY * 2);
+      return {
+        mode: 'ambient',
+        baseX,
+        baseY,
+        regionRadiusX,
+        regionRadiusY,
+        x: baseX,
+        y: baseY,
+        pull: 0,
+        radius: 1 + Math.random() * 1.5,
+        maxAlpha: 0.45 + Math.random() * 0.25,
+        phase: Math.random() * TAU,
+        driftSpeed: 0.2 + Math.random() * 0.35,
+        driftX: 8 + Math.random() * 16,
+        driftY: 10 + Math.random() * 20,
+        orbitAngle: Math.random() * TAU,
+        orbitRadius: 30 + Math.random() * 145,
+        orbitSpeed: (0.25 + Math.random() * 0.5) * (Math.random() < 0.5 ? -1 : 1),
+      };
+    };
 
     const draw = (time: number) => {
       ctx.clearRect(0, 0, width, height);
-      if (ringVisibility > 0.01) {
-        ctx.strokeStyle = primary;
-        ctx.lineWidth = 0.8;
-        ctx.setLineDash([5, 7]);
-        ctx.globalAlpha = ringVisibility * 0.24;
-        ctx.beginPath();
-        ctx.arc(pointer.x, pointer.y, MOUSE_OUTER_RADIUS, 0, TAU);
-        ctx.stroke();
-        ctx.setLineDash([2, 4]);
-        ctx.globalAlpha = ringVisibility * 0.38;
-        ctx.beginPath();
-        ctx.arc(pointer.x, pointer.y, MOUSE_INNER_RADIUS, 0, TAU);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.globalAlpha = 1;
-      }
-      // 连线放在粒子下层，透明度随牵引和退出状态同步变化
+      // 连线放在粒子下层，透明度随牵引状态同步变化
       ctx.strokeStyle = primary;
       ctx.lineCap = 'round';
-      const linkedParticles = particles.filter((p) => p.mode !== 'ambient' && p.pull >= 0.015);
+      const linkedParticles = particles.filter((p) => p.mode === 'attracted' && p.pull >= 0.015);
       ctx.lineWidth = 0.55;
       for (let i = 0; i < linkedParticles.length; i++) {
         const a = linkedParticles[i];
@@ -133,7 +117,7 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
           const b = linkedParticles[j];
           const distance = Math.hypot(a.x - b.x, a.y - b.y);
           if (distance >= PARTICLE_LINK_DISTANCE) continue;
-          ctx.globalAlpha = (1 - distance / PARTICLE_LINK_DISTANCE) * a.pull * a.fade * b.pull * b.fade * 0.26;
+          ctx.globalAlpha = (1 - distance / PARTICLE_LINK_DISTANCE) * a.pull * b.pull * 0.26;
           ctx.beginPath();
           ctx.moveTo(a.x, a.y);
           ctx.lineTo(b.x, b.y);
@@ -142,11 +126,8 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
       }
       ctx.lineWidth = 0.7;
       for (const p of particles) {
-        const distance = Math.hypot(p.x - pointer.x, p.y - pointer.y);
-        const inAttractionBand = distance >= MOUSE_INNER_RADIUS && distance <= MOUSE_OUTER_RADIUS;
-        if (p.mode === 'ambient' || p.pull < 0.015
-          || (p.mode === 'attracted' && !inAttractionBand)) continue;
-        ctx.globalAlpha = p.pull * p.fade * 0.32;
+        if (p.mode === 'ambient' || p.pull < 0.015) continue;
+        ctx.globalAlpha = p.pull * 0.32;
         ctx.beginPath();
         ctx.moveTo(pointer.x, pointer.y);
         ctx.lineTo(p.x, p.y);
@@ -158,8 +139,7 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
       ctx.shadowBlur = 7;
       for (const p of particles) {
         const pulse = 0.5 + 0.5 * Math.sin(time * 0.8 + p.phase);
-        const alpha = Math.min(0.85, (0.18 + (p.maxAlpha - 0.18) * pulse) * (1 + p.pull * 0.15));
-        ctx.globalAlpha = alpha * Math.max(0, p.fade);
+        ctx.globalAlpha = Math.min(0.85, (0.18 + (p.maxAlpha - 0.18) * pulse) * (1 + p.pull * 0.15));
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius * (1 + p.pull * 0.12), 0, TAU);
         ctx.fill();
@@ -200,44 +180,21 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
       pointer.attract = false;
     };
     const onScroll = () => {
-      const delta = window.scrollY - lastScrollY;
-      lastScrollY = window.scrollY;
-      for (const p of particles) {
-        if (p.mode !== 'ambient') continue;
-        p.baseY -= delta * 0.06;
-        p.y -= delta * 0.06;
-        if (p.baseY < -40) {
-          p.baseY += height + 80;
-          p.y += height + 80;
-        } else if (p.baseY > height + 40) {
-          p.baseY -= height + 80;
-          p.y -= height + 80;
-        }
-      }
       if (pointer.active) updatePointerMode(document.elementFromPoint(pointer.x, pointer.y));
     };
 
-    const retire = (p: DustParticle) => {
-      if (p.mode === 'attracted') p.mode = 'retiring';
+    const release = (p: DustParticle) => {
+      if (p.mode === 'attracted') p.mode = 'ambient';
     };
     const releaseAll = () => {
-      attractionQueue.forEach(retire);
+      attractionQueue.forEach(release);
       attractionQueue = [];
     };
-    const replenish = (p: DustParticle, now: number) => {
-      const replacement = createParticle(p.baseX, p.baseY, 0);
-      replacement.availableAt = now + 800;
-      particles.push(replacement);
-    };
-    const attract = (p: DustParticle, now: number) => {
-      p.mode = 'attracted';
-      replenish(p, now);
-    };
-    const updateAttractionQueue = (now: number) => {
+    const updateAttractionQueue = () => {
       // 鼠标移动时，从当前牵引粒子与环境粒子中重新选出最近的 16 个
       const candidates = [
         ...attractionQueue,
-        ...particles.filter((p) => p.mode === 'ambient' && p.availableAt <= now),
+        ...particles.filter((p) => p.mode === 'ambient'),
       ];
       const nearest = candidates
         .sort((a, b) => Math.hypot(a.x - pointer.x, a.y - pointer.y)
@@ -245,11 +202,9 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
         .slice(0, ATTRACTED_COUNT);
       const selected = new Set(nearest);
       attractionQueue.forEach((p) => {
-        if (!selected.has(p)) retire(p);
+        if (!selected.has(p)) release(p);
       });
-      nearest.forEach((p) => {
-        if (p.mode === 'ambient') attract(p, now);
-      });
+      nearest.forEach((p) => { p.mode = 'attracted'; });
       attractionQueue = nearest;
     };
 
@@ -274,61 +229,43 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
       }
     };
 
+    /** 所有运动最终都约束在粒子自己的固定椭圆区域内 */
+    const constrainToRegion = (p: DustParticle) => {
+      const dx = p.x - p.baseX;
+      const dy = p.y - p.baseY;
+      const normalized = Math.hypot(dx / p.regionRadiusX, dy / p.regionRadiusY);
+      if (normalized <= 1) return;
+      p.x = p.baseX + dx / normalized;
+      p.y = p.baseY + dy / normalized;
+    };
+
     const animate = (now: number) => {
       const dt = Math.min((now - lastTime) / 1000, 0.05);
       const step = Math.min(dt * 60, 2);
       const time = now / 1000;
       lastTime = now;
       if (pointer.attract) {
-        if (pointer.moved || attractionQueue.length === 0) updateAttractionQueue(now);
+        if (pointer.moved || attractionQueue.length === 0) updateAttractionQueue();
       } else if (attractionQueue.length) releaseAll();
       pointer.moved = false;
-      ringVisibility += ((pointer.attract ? 1 : 0) - ringVisibility) * (1 - Math.pow(0.9, step));
 
       for (const p of particles) {
-        if (p.mode === 'retiring') {
-          p.pull += (0 - p.pull) * (1 - Math.pow(0.88, step));
-          p.fade = Math.max(0, p.fade - dt * 3);
-          continue;
-        }
-        if (p.mode === 'ambient') p.fade = Math.min(1, p.fade + dt * 1.8);
+        const targetPull = p.mode === 'attracted' ? 1 : 0;
+        p.pull += (targetPull - p.pull) * (1 - Math.pow(0.9, step));
         p.orbitAngle += p.orbitSpeed * dt * (0.25 + p.pull);
         const ambientX = p.baseX + Math.sin(time * p.driftSpeed + p.phase) * p.driftX;
         const ambientY = p.baseY + Math.cos(time * p.driftSpeed * 0.8 + p.phase) * p.driftY;
-        let targetX = ambientX;
-        let targetY = ambientY;
-        let targetPull = 0;
-        if (p.mode === 'attracted') {
-          const dx = p.x - pointer.x;
-          const dy = p.y - pointer.y;
-          const distance = Math.max(Math.hypot(dx, dy), 0.001);
-          if (distance < MOUSE_INNER_RADIUS) {
-            // 内圈互斥：沿当前方向把粒子推到内圈之外
-            targetPull = 1;
-            const targetRadius = MOUSE_INNER_RADIUS + 48;
-            targetX = pointer.x + dx / distance * targetRadius;
-            targetY = pointer.y + dy / distance * targetRadius;
-            const repelForce = (1 - distance / MOUSE_INNER_RADIUS) * 2.2 * step;
-            p.x += dx / distance * repelForce;
-            p.y += dy / distance * repelForce;
-          } else if (distance <= MOUSE_OUTER_RADIUS) {
-            // 环带牵引：粒子缓慢收拢到内圈边缘，并保留切向运动
-            targetPull = 1;
-            const targetRadius = MOUSE_INNER_RADIUS + 36;
-            targetX = pointer.x + Math.cos(p.orbitAngle) * targetRadius;
-            targetY = pointer.y + Math.sin(p.orbitAngle) * targetRadius;
-          }
-        }
-        p.pull += (targetPull - p.pull) * (1 - Math.pow(0.9, step));
-        targetX = ambientX + (targetX - ambientX) * p.pull;
-        targetY = ambientY + (targetY - ambientY) * p.pull;
+        const orbitX = pointer.x + Math.cos(p.orbitAngle) * p.orbitRadius;
+        const orbitY = pointer.y + Math.sin(p.orbitAngle) * p.orbitRadius * 0.68;
+        const targetX = ambientX + (orbitX - ambientX) * p.pull;
+        const targetY = ambientY + (orbitY - ambientY) * p.pull;
         const ease = 1 - Math.pow(1 - (0.018 + p.pull * 0.065), step);
         p.x += (targetX - p.x) * ease;
         p.y += (targetY - p.y) * ease;
       }
 
       applyRepulsion(step);
-      particles = particles.filter((p) => p.mode !== 'retiring' || p.fade > 0);
+      particles.forEach(constrainToRegion);
       draw(time);
       frame = window.requestAnimationFrame(animate);
     };
