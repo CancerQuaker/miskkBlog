@@ -27,7 +27,6 @@ export interface ArticleCard {
   likes: number;
   comments: number;
   shares: number;
-  watchSeconds: number;
   pinned: boolean;
   /** 0 草稿 1 已发布 2 已隐藏（管理端使用） */
   status?: number;
@@ -75,8 +74,6 @@ export const articleApi = {
   unlike: (id: number | string) => request<boolean>(http.delete(`/article/articles/${id}/like`)),
   share: (id: number | string, channel: string) =>
     request<void>(http.post(`/article/articles/${id}/share`, { articleId: id, channel })),
-  watch: (id: number | string, seconds: number) =>
-    request<void>(http.post(`/article/articles/${id}/watch`, { seconds })),
   comments: (articleId: number | string, page = 1, size = 10) =>
     request<PageData<CommentItem>>(http.get('/article/comments', { params: { articleId, page, size } })),
   createComment: (data: { articleId: number; content: string; parentId?: number; replyUserId?: number }) =>

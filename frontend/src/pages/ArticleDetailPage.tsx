@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Spin, Result, Button, message } from 'antd';
 import {
-  EyeOutlined, MessageOutlined, ShareAltOutlined, FieldTimeOutlined,
+  EyeOutlined, MessageOutlined, ShareAltOutlined,
   FileTextOutlined, ArrowLeftOutlined, ArrowRightOutlined, CalendarOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -10,7 +10,7 @@ import { articleApi, ArticleDetail } from '../api/article';
 import MarkdownView, { TocItem, extractToc } from '../components/MarkdownView';
 import CommentSection, { LikeButton } from '../components/CommentSection';
 import ShareButtons from '../components/ShareButtons';
-import { DefaultAvatar, fmtDuration } from '../components/Common';
+import { DefaultAvatar } from '../components/Common';
 import { useAuthStore } from '../stores/authStore';
 
 export default function ArticleDetailPage() {
@@ -21,7 +21,6 @@ export default function ArticleDetailPage() {
   const [error, setError] = useState('');
   const [liked, setLiked] = useState(false);
   const [toc, setToc] = useState<TocItem[]>([]);
-  const watchSeconds = useRef(0);
 
   useEffect(() => {
     if (!id) return;
@@ -38,33 +37,6 @@ export default function ArticleDetailPage() {
       })
       .catch((e) => setError(e.message));
   }, [id, user?.id]);
-
-  // 在线观看时长心跳：每 20 秒上报一次（页面可见时）
-  useEffect(() => {
-    if (!id) return;
-    const timer = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        const seconds = Math.min(20, watchSeconds.current + 20);
-        watchSeconds.current = 0;
-        if (seconds > 0) articleApi.watch(id, seconds).catch(() => {});
-      }
-    }, 20000);
-    const onLeave = () => {
-      if (watchSeconds.current > 0) {
-        navigator.sendBeacon?.(
-          `/api/article/articles/${id}/watch`,
-          new Blob([JSON.stringify({ seconds: watchSeconds.current })], { type: 'application/json' }),
-        );
-        watchSeconds.current = 0;
-      }
-    };
-    window.addEventListener('pagehide', onLeave);
-    return () => {
-      clearInterval(timer);
-      window.removeEventListener('pagehide', onLeave);
-      onLeave();
-    };
-  }, [id]);
 
   if (error) {
     return <Result status="404" title="文章不存在" subTitle={error}
@@ -129,7 +101,6 @@ export default function ArticleDetailPage() {
               <span><EyeOutlined /> {article.views} 浏览</span>
               <span><MessageOutlined /> {article.comments} 评论</span>
               <span><ShareAltOutlined /> {article.shares} 分享</span>
-              <span><FieldTimeOutlined /> 累计观看 {fmtDuration(article.watchSeconds)}</span>
               <span><FileTextOutlined /> {article.readingMinutes} 分钟阅读</span>
             </div>
 

@@ -7,7 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
  * 缺失或为 unknown 时回退到 TCP 远端地址。
  * <p>
  * AuthInterceptor 在鉴权阶段解析一次并写入 {@link cn.miskk.blog.common.auth.LoginUser#getIp()}，
- * 供浏览量/观看时长等"按访客去重"类逻辑统一取值。
+ * 供浏览量等"按访客去重"类逻辑统一取值。
  */
 public final class ClientIpUtil {
 

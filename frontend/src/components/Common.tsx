@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Avatar } from 'antd';
-import { EyeOutlined, LikeOutlined, MessageOutlined, ShareAltOutlined, ClockCircleOutlined, UserOutlined } from '@ant-design/icons';
+import { EyeOutlined, LikeOutlined, MessageOutlined, ShareAltOutlined, UserOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { ArticleCard as ArticleCardType } from '../api/article';
 import { UserCard } from '../api/auth';
@@ -11,13 +11,6 @@ export function DefaultAvatar({ user, size = 36 }: { user?: Partial<UserCard> | 
   return (
     <Avatar size={size} src={user?.avatar} icon={<UserOutlined />} style={{ background: 'var(--primary-weak)', flexShrink: 0 }} />
   );
-}
-
-export function fmtDuration(seconds?: number | null) {
-  const s = seconds || 0;
-  if (s < 60) return `${s}秒`;
-  if (s < 3600) return `${Math.round(s / 60)}分钟`;
-  return `${(s / 3600).toFixed(1)}小时`;
 }
 
 export default function ArticleCard({ article }: { article: ArticleCardType }) {
@@ -40,7 +33,6 @@ export default function ArticleCard({ article }: { article: ArticleCardType }) {
           <span><EyeOutlined /> {article.views}</span>
           <span><MessageOutlined /> {article.comments}</span>
           <span><ShareAltOutlined /> {article.shares}</span>
-          <span><ClockCircleOutlined /> {fmtDuration(article.watchSeconds)}</span>
           {article.publishedAt && <span style={{ marginLeft: 'auto' }}>{dayjs(article.publishedAt).format('MM-DD')}</span>}
         </div>
       </div>

@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
  *   <li>{@link #userId}：为 null 表示匿名请求（匿名请求也会填充上下文，便于统一取值）；</li>
  *   <li>{@link #role}：0 普通用户 / 1 管理员，匿名固定为 0；</li>
  *   <li>{@link #ip}：客户端真实 IP，从 X-Forwarded-For / remoteAddr 解析，
- *       供浏览量、观看时长等"按访客去重"类逻辑使用。</li>
+ *       供浏览量等"按访客去重"类逻辑使用。</li>
  * </ul>
  */
 @Data

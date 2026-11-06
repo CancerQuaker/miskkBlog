@@ -8,7 +8,6 @@ import cn.miskk.blog.common.dto.ArticleSaveDTO;
 import cn.miskk.blog.common.dto.ArticleStatusDTO;
 import cn.miskk.blog.common.dto.CommentCreateDTO;
 import cn.miskk.blog.common.dto.ShareDTO;
-import cn.miskk.blog.common.dto.WatchDTO;
 import cn.miskk.blog.common.util.UploadUtil;
 import cn.miskk.blog.common.vo.ArticleCardVO;
 import cn.miskk.blog.common.vo.ArticleDetailVO;
@@ -91,12 +90,6 @@ public class ArticleHandler {
 
     public Result<Void> share(Long id, ShareDTO dto) {
         interactionService.share(id, dto.getChannel(), UserContext.getUserId());
-        return Result.ok();
-    }
-
-    /** 上报在线观看时长（前端心跳），按访客+日期聚合 */
-    public Result<Void> watch(Long id, WatchDTO dto) {
-        interactionService.watch(id, dto.getSeconds(), UserContext.getUserId(), visitorIdentity());
         return Result.ok();
     }
 

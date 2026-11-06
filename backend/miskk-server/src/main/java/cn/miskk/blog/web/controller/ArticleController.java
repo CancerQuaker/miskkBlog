@@ -6,7 +6,6 @@ import cn.miskk.blog.common.auth.RequireAdmin;
 import cn.miskk.blog.common.auth.RequireLogin;
 import cn.miskk.blog.common.dto.CommentCreateDTO;
 import cn.miskk.blog.common.dto.ShareDTO;
-import cn.miskk.blog.common.dto.WatchDTO;
 import cn.miskk.blog.common.vo.ArticleCardVO;
 import cn.miskk.blog.common.vo.ArticleDetailVO;
 import cn.miskk.blog.common.vo.CategoryVO;
@@ -31,7 +30,7 @@ import java.util.List;
 
 /**
  * 文章/评论/分类/标签/上传入口（GET 查询、POST 互动、DELETE 取消），
- * 请求/响应对象取自 common 共享 DTO/VO。浏览、分享、观看时长允许匿名。
+ * 请求/响应对象取自 common 共享 DTO/VO。浏览、分享允许匿名。
  */
 @Tag(name = "文章")
 @RestController
@@ -92,12 +91,6 @@ public class ArticleController {
     @PostMapping("/api/article/articles/{id}/share")
     public Result<Void> share(@PathVariable Long id, @Valid @RequestBody ShareDTO dto) {
         return articleHandler.share(id, dto);
-    }
-
-    @Operation(summary = "上报在线观看时长（心跳）")
-    @PostMapping("/api/article/articles/{id}/watch")
-    public Result<Void> watch(@PathVariable Long id, @Valid @RequestBody WatchDTO dto) {
-        return articleHandler.watch(id, dto);
     }
 
     // ==================== 评论 ====================

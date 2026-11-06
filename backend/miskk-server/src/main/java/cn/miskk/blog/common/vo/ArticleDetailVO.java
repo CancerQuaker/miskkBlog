@@ -24,7 +24,6 @@ public class ArticleDetailVO {
     private Long likes;
     private Long comments;
     private Long shares;
-    private Long watchSeconds;
     private Boolean pinned;
     private Boolean liked;
     /** 字数 */

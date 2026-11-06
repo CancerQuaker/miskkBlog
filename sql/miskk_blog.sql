@@ -129,7 +129,6 @@ CREATE TABLE IF NOT EXISTS t_article (
     likes         BIGINT       NOT NULL DEFAULT 0,
     comments      BIGINT       NOT NULL DEFAULT 0,
     shares        BIGINT       NOT NULL DEFAULT 0,
-    watch_seconds BIGINT       NOT NULL DEFAULT 0,
     deleted       SMALLINT     NOT NULL DEFAULT 0,
     created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -178,18 +177,6 @@ CREATE TABLE IF NOT EXISTS t_share_log (
 );
 CREATE INDEX IF NOT EXISTS idx_s_article ON t_share_log (article_id);
 
-CREATE TABLE IF NOT EXISTS t_watch_record (
-    id          BIGSERIAL PRIMARY KEY,
-    article_id  BIGINT    NOT NULL,
-    user_id     BIGINT    NULL,
-    visitor_key VARCHAR(64) NULL,
-    seconds     BIGINT    NOT NULL DEFAULT 0,
-    watch_date  DATE      NOT NULL,
-    created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX IF NOT EXISTS idx_w_article_date ON t_watch_record (article_id, watch_date);
-
 -- 种子分类
 INSERT INTO t_category (id, name, description, sort) VALUES
     (1, '技术分享', '前后端开发技术与踩坑记录', 1),
@@ -214,26 +201,26 @@ DELETE FROM t_comment WHERE id BETWEEN 1 AND 14;
 DELETE FROM t_article_tag WHERE article_id IN (1, 2, 3, 4);
 DELETE FROM t_article WHERE id IN (1, 2, 3, 4);
 INSERT INTO t_article (id, title, summary, content, category_id, author_id, status, pinned,
-                       views, likes, comments, shares, watch_seconds, created_at, updated_at, published_at)
+                       views, likes, comments, shares, created_at, updated_at, published_at)
 VALUES (1, '迷失客客の博客正式开张啦捏~',
         '欢迎来到迷失客客の博客！本站基于 Spring Boot + Vite React 打造，仙狐看板娘、魔法星星光标和原神崩铁 Q 版小伙伴等你来玩。',
         '# 欢迎来到迷失客客の博客捏~\n\n这是一个用 **Spring Boot 3.3** + **Vite + React 18** 打造的二次元风格博客。\n\n## 站点特色\n\n- 🦊 仙狐小姐 Live2D 看板娘，眼睛会跟着鼠标转\n- ✨ 魔法星星鼠标指针：星星拖尾，左键蹦出字符，右键蹦颜文字\n- 🌸 樱花飘落特效 + 八种主题色随心换\n- 🎈 原神派蒙、崩铁三月七 Q 版小伙伴在站内各处出没\n- 🌗 亮色 / 暗色 / 护眼三种主题\n- 🎵 右上角还有音乐播放器\n\n## 技术栈\n\n| 端 | 技术 |\n|----|------|\n| 前端 | Vite + React + Ant Design |\n| 后端 | Spring Boot 单体应用 |\n| 数据 | PostgreSQL 单库 + Redis 缓存 |\n\n> 觉得不错的话，给文章点个赞再走叭！',
-        1, 1, 1, 1, 268, 12, 5, 4, 4200,
+        1, 1, 1, 1, 268, 12, 5, 4,
         NOW() - INTERVAL '27 day', NOW() - INTERVAL '27 day', NOW() - INTERVAL '27 day'),
        (2, 'Spring Boot 单体博客后端设计',
         '单进程吃下全部业务：统一鉴权拦截器、一个 PostgreSQL 管全部数据、Redis 浏览量削峰，聊聊博客后端的分层设计。',
         '# Spring Boot 单体博客后端设计\n\n本站后端是一个单体应用（:8100），请求链路三层：\n\n1. `web.controller` —— 对前端的 REST 接口（`/api/**`，GET/PUT/DELETE 风格）\n2. `web.handler` —— 参数翻译与结果组装，直接调用业务 Service\n3. `service` —— 业务逻辑，全部落到同一个 PostgreSQL 库\n\n## 鉴权是怎么做的？\n\n一个 `AuthInterceptor` 搞定：解析 `Authorization: Bearer` JWT 填充 ThreadLocal 用户上下文，白名单外的请求必须登录，`/api/admin/**` 与标注 `@RequireAdmin` 的接口校验管理员。登录成功后由 Handler 签发 JWT，密钥只有应用自己知道。\n\n## 为什么只用一个 PostgreSQL？\n\n个人博客的数据量，单库单实例绰绰有余：用户、友链、文章、评论全在 `miskk_blog` 一个库里，跨业务写操作共享同一个事务，备份只需 dump 一个库，部署只养一个进程。文章正文用 `TEXT`、标签走关联表，搜索用 `ILIKE` 不区分大小写。\n\n## 为什么浏览量用 Redis？\n\n浏览是高频写操作，直接写库会产生大量行锁竞争。用 Redis `SADD` 按访客按天去重 + Hash 缓冲增量，30 秒批量落库一次：\n\n```java\nredisTemplate.opsForHash().increment(VIEW_BUFFER, articleId, 1);\n```\n\n## 文章作者信息怎么来？\n\n评论和文章列表要展示作者昵称头像，直接查用户表批量取名片，结果用 Redis 缓存 10 分钟。',
-        1, 1, 1, 0, 132, 5, 3, 1, 1900,
+        1, 1, 1, 0, 132, 5, 3, 1,
         NOW() - INTERVAL '16 day', NOW() - INTERVAL '16 day', NOW() - INTERVAL '16 day'),
        (3, '用 React 实现一颗跟随鼠标的魔法星星',
         '自定义光标 + SVG 星星：缓慢旋转跟随鼠标，移动洒下星星拖尾，左键星爆蹦出字符，纯前端零依赖实现。',
         '# 用 React 实现一颗跟随鼠标的魔法星星\n\n思路很简单：\n\n1. 隐藏系统光标，画一颗缓慢旋转的四角星作为指针\n2. `mousemove` 里按时间间隔在沿途生成小星星，做成拖尾效果\n3. 监听 `mousedown`：左键 → 星星收缩星爆 + 蹦出字符；右键 → 蹦出颜文字\n\n```tsx\nconst pos = useRef({ x: 0, y: 0 });\nuseEffect(() => {\n  const onMove = (e: MouseEvent) => {\n    pos.current = { x: e.clientX, y: e.clientY };\n  };\n  window.addEventListener(''mousemove'', onMove);\n  return () => window.removeEventListener(''mousemove'', onMove);\n}, []);\n```\n\n记得给容器加 `pointer-events: none`，不然会挡住所有点击捏！',
-        1, 1, 1, 0, 98, 4, 3, 1, 950,
+        1, 1, 1, 0, 98, 4, 3, 1,
         NOW() - INTERVAL '9 day', NOW() - INTERVAL '9 day', NOW() - INTERVAL '9 day'),
        (4, '最近在追的新番与 backlog 管理',
         '十月新番追番清单与我的 spreadsheet 管理法，顺便安利几部治愈系。',
         '# 最近在追的新番与 backlog 管理\n\n十月新番神仙打架！目前的追番表：\n\n- 治愈系日常：每周五准时开饭，下饭神器\n- 长篇热血：已经攒了 3 集，周末一口气补完\n- 偶像企划：吃饭的时候看，人均小剧场\n\n用 Notion 做了个追番看板，状态分为：**在看 / 缓冲区 / 弃了**。\n\n> backlog 越长越有安全感，大概。',
-        2, 1, 1, 0, 64, 2, 3, 0, 280,
+        2, 1, 1, 0, 64, 2, 3, 0,
         NOW() - INTERVAL '3 day', NOW() - INTERVAL '3 day', NOW() - INTERVAL '3 day');
 
 INSERT INTO t_article_tag (article_id, tag_id) VALUES

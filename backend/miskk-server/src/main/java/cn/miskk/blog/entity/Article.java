@@ -48,9 +48,6 @@ public class Article {
 
     private Long shares;
 
-    /** 累计在线观看时长（秒） */
-    private Long watchSeconds;
-
     @TableLogic
     private Integer deleted;
 

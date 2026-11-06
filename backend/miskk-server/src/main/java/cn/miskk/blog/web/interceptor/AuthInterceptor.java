@@ -24,7 +24,7 @@ import java.util.List;
 /**
  * 统一鉴权拦截器：
  * 1. 解析 Authorization 中的 JWT，解析结果写入 UserContext（匿名请求也填充，userId 为 null，
- *    ip 供浏览量/观看时长按访客去重）；
+ *    ip 供浏览量按访客去重）；
  * 2. 非白名单请求必须携带有效 JWT，否则返回 401；
  * 3. /api/admin/** 仅允许管理员（role=1）访问；
  * 4. 处理器方法/类上标注 {@link RequireLogin} / {@link RequireAdmin} 时再校验登录态与角色；
@@ -46,8 +46,7 @@ public class AuthInterceptor implements HandlerInterceptor {
             "/api/user/auth/code",
             "/api/user/auth/oauth/**",
             "/api/article/articles/*/view",
-            "/api/article/articles/*/share",
-            "/api/article/articles/*/watch"
+            "/api/article/articles/*/share"
     );
 
     /** 无需登录即可访问的接口（仅 GET） */

@@ -174,7 +174,6 @@ public class ArticleServiceImpl implements ArticleService {
             article.setLikes(0L);
             article.setComments(0L);
             article.setShares(0L);
-            article.setWatchSeconds(0L);
             article.setAuthorId(authorId);
         }
         article.setTitle(dto.getTitle());

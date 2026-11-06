@@ -24,7 +24,6 @@ public class ArticleCardVO {
     private Long likes;
     private Long comments;
     private Long shares;
-    private Long watchSeconds;
     private Boolean pinned;
     /** 0 草稿 1 已发布 2 已隐藏（管理端使用） */
     private Integer status;
