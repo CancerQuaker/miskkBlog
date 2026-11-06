@@ -27,6 +27,7 @@ interface DustParticle {
 const TAU = Math.PI * 2;
 const ATTRACTION_RADIUS = 220;
 const ATTRACTED_COUNT = 16;
+const PARTICLE_LINK_DISTANCE = 110;
 /** 卡片与浮层保持环境漂浮，只有页面背景及留白触发指针牵引 */
 const NON_BACKGROUND_SELECTOR = [
   '.card',
@@ -107,8 +108,23 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
       ctx.clearRect(0, 0, width, height);
       // 连线放在粒子下层，透明度随牵引和退出状态同步变化
       ctx.strokeStyle = primary;
-      ctx.lineWidth = 0.7;
       ctx.lineCap = 'round';
+      const linkedParticles = particles.filter((p) => p.mode !== 'ambient' && p.pull >= 0.015);
+      ctx.lineWidth = 0.55;
+      for (let i = 0; i < linkedParticles.length; i++) {
+        const a = linkedParticles[i];
+        for (let j = i + 1; j < linkedParticles.length; j++) {
+          const b = linkedParticles[j];
+          const distance = Math.hypot(a.x - b.x, a.y - b.y);
+          if (distance >= PARTICLE_LINK_DISTANCE) continue;
+          ctx.globalAlpha = (1 - distance / PARTICLE_LINK_DISTANCE) * a.pull * a.fade * b.pull * b.fade * 0.26;
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+      }
+      ctx.lineWidth = 0.7;
       for (const p of particles) {
         if (p.mode === 'ambient' || p.pull < 0.015) continue;
         ctx.globalAlpha = p.pull * p.fade * 0.32;
