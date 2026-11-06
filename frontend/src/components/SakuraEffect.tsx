@@ -11,7 +11,6 @@ interface DustParticle {
   y: number;
   pull: number;
   fade: number;
-  inRange: boolean;
   availableAt: number;
   radius: number;
   maxAlpha: number;
@@ -25,7 +24,6 @@ interface DustParticle {
 }
 
 const TAU = Math.PI * 2;
-const ATTRACTION_RADIUS = 220;
 const ATTRACTED_COUNT = 16;
 const PARTICLE_LINK_DISTANCE = 110;
 const PARTICLE_REPULSION_RADIUS = 36;
@@ -64,7 +62,7 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
     if (!canvas || !ctx) return;
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const pointer = { x: 0, y: 0, active: false, attract: false };
+    const pointer = { x: 0, y: 0, active: false, attract: false, moved: false };
     let width = window.innerWidth;
     let height = window.innerHeight;
     let primary = '';
@@ -93,7 +91,6 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
       y: baseY,
       pull: 0,
       fade,
-      inRange: false,
       availableAt: 0,
       radius: 1 + Math.random() * 1.5,
       maxAlpha: 0.45 + Math.random() * 0.25,
@@ -172,6 +169,7 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
       pointer.x = event.clientX;
       pointer.y = event.clientY;
       pointer.active = true;
+      pointer.moved = true;
       const target = event.target instanceof Element
         ? event.target
         : document.elementFromPoint(event.clientX, event.clientY);
@@ -205,68 +203,34 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
     const releaseAll = () => {
       attractionQueue.forEach(retire);
       attractionQueue = [];
-      particles.forEach((p) => { p.inRange = false; });
     };
     const replenish = (p: DustParticle, now: number) => {
       const replacement = createParticle(p.baseX, p.baseY, 0);
       replacement.availableAt = now + 800;
-      replacement.inRange = Math.hypot(replacement.x - pointer.x, replacement.y - pointer.y) <= ATTRACTION_RADIUS;
       particles.push(replacement);
     };
     const attract = (p: DustParticle, now: number) => {
       p.mode = 'attracted';
-      attractionQueue.push(p);
       replenish(p, now);
     };
-    const fillAttractionQueue = (now: number) => {
-      const missing = ATTRACTED_COUNT - attractionQueue.length;
-      if (missing <= 0) return;
-      const nearest = particles
-        .filter((p) => p.mode === 'ambient' && p.availableAt <= now)
-        .sort((a, b) => Math.hypot(a.x - pointer.x, a.y - pointer.y)
-          - Math.hypot(b.x - pointer.x, b.y - pointer.y));
-      nearest.slice(0, missing).forEach((p) => attract(p, now));
-    };
     const updateAttractionQueue = (now: number) => {
-      const initialFill = attractionQueue.length === 0;
-      fillAttractionQueue(now);
-      if (initialFill) {
-        for (const p of particles) {
-          if (p.mode === 'ambient') {
-            p.inRange = Math.hypot(p.x - pointer.x, p.y - pointer.y) <= ATTRACTION_RADIUS;
-          }
-        }
-        return;
-      }
-      // 新候选粒子按距离由近到远处理，只替换比它更远的牵引粒子
-      const entering = particles
-        .filter((p) => p.mode === 'ambient' && p.availableAt <= now && !p.inRange
-          && Math.hypot(p.x - pointer.x, p.y - pointer.y) <= ATTRACTION_RADIUS)
+      // 鼠标移动时，从当前牵引粒子与环境粒子中重新选出最近的 16 个
+      const candidates = [
+        ...attractionQueue,
+        ...particles.filter((p) => p.mode === 'ambient' && p.availableAt <= now),
+      ];
+      const nearest = candidates
         .sort((a, b) => Math.hypot(a.x - pointer.x, a.y - pointer.y)
-          - Math.hypot(b.x - pointer.x, b.y - pointer.y));
-      for (const p of entering) {
-        if (attractionQueue.length >= ATTRACTED_COUNT) {
-          let farthestIndex = 0;
-          let farthestDistance = -1;
-          for (let i = 0; i < attractionQueue.length; i++) {
-            const candidate = attractionQueue[i];
-            const distance = Math.hypot(candidate.x - pointer.x, candidate.y - pointer.y);
-            if (distance > farthestDistance) {
-              farthestDistance = distance;
-              farthestIndex = i;
-            }
-          }
-          if (Math.hypot(p.x - pointer.x, p.y - pointer.y) >= farthestDistance) continue;
-          const [farthest] = attractionQueue.splice(farthestIndex, 1);
-          if (farthest) retire(farthest);
-        }
-        attract(p, now);
-      }
-      for (const p of particles) {
-        if (p.mode === 'ambient') {
-          p.inRange = Math.hypot(p.x - pointer.x, p.y - pointer.y) <= ATTRACTION_RADIUS;
-        }
-      }
+          - Math.hypot(b.x - pointer.x, b.y - pointer.y))
+        .slice(0, ATTRACTED_COUNT);
+      const selected = new Set(nearest);
+      attractionQueue.forEach((p) => {
+        if (!selected.has(p)) retire(p);
+      });
+      nearest.forEach((p) => {
+        if (p.mode === 'ambient') attract(p, now);
+      });
+      attractionQueue = nearest;
     };
 
     const applyRepulsion = (step: number) => {
@@ -295,8 +259,10 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
       const step = Math.min(dt * 60, 2);
       const time = now / 1000;
       lastTime = now;
-      if (pointer.attract) updateAttractionQueue(now);
-      else if (attractionQueue.length) releaseAll();
+      if (pointer.attract) {
+        if (pointer.moved || attractionQueue.length === 0) updateAttractionQueue(now);
+      } else if (attractionQueue.length) releaseAll();
+      pointer.moved = false;
 
       for (const p of particles) {
         if (p.mode === 'retiring') {
