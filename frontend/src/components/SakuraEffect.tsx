@@ -42,30 +42,16 @@ const NON_BACKGROUND_SELECTOR = [
   '#oml2d-stage',
 ].join(', ');
 
-type DustRegion = 'left' | 'center' | 'right';
-
-/** 根据 CSS 视口面积计算粒子数量，避免高 DPI 屏幕重复增加粒子 */
-export function getDynamicParticleCount(width: number, height: number): number {
-  return Math.max(64, Math.min(240, Math.round(width * height / 7200)));
-}
-
-/** 左右数量尽量相等，中央区域仅保留约 10% 粒子 */
-function dustRegionAt(index: number, total: number): DustRegion {
-  const centerCount = Math.floor(total * 0.1);
-  const leftCount = Math.floor((total - centerCount) / 2);
-  if (index < leftCount) return 'left';
-  if (index < total - centerCount) return 'right';
-  return 'center';
-}
-
-export function randomDustX(random: () => number, region: DustRegion): number {
-  if (region === 'left') return 3 + random() * 22;
-  if (region === 'right') return 75 + random() * 22;
+/** 随机分布：左右非卡片区域各约 45%，中央卡片区域约 10% */
+export function randomDustX(random: () => number): number {
+  const region = random();
+  if (region < 0.45) return 3 + random() * 22;
+  if (region < 0.9) return 75 + random() * 22;
   return 32 + random() * 36;
 }
 
-/** Canvas 柔光尘：数量随视口调整，粒子在独立椭圆区域运动，最近 16 个可被牵引 */
-export default function SakuraEffect({ count }: { count?: number }) {
+/** Canvas 柔光尘：固定 128 个粒子随机分布于独立椭圆区域，最近 16 个可被牵引 */
+export default function SakuraEffect({ count = 128 }: { count?: number }) {
   const sakura = useThemeStore((s) => s.sakura);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -92,10 +78,10 @@ export default function SakuraEffect({ count }: { count?: number }) {
       primaryLight = style.getPropertyValue('--primary-light').trim();
     };
 
-    const createParticle = (index: number, total: number): DustParticle => {
+    const createParticle = (): DustParticle => {
       const regionRadiusX = 48 + Math.random() * 42;
       const regionRadiusY = 36 + Math.random() * 30;
-      const baseX = regionRadiusX + randomDustX(Math.random, dustRegionAt(index, total)) / 100 * Math.max(1, width - regionRadiusX * 2);
+      const baseX = regionRadiusX + randomDustX(Math.random) / 100 * Math.max(1, width - regionRadiusX * 2);
       const baseY = regionRadiusY + Math.random() * Math.max(1, height - regionRadiusY * 2);
       return {
         mode: 'ambient',
@@ -171,8 +157,7 @@ export default function SakuraEffect({ count }: { count?: number }) {
       canvas.height = Math.round(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       attractionQueue = [];
-      const particleCount = count ?? getDynamicParticleCount(width, height);
-      particles = width < 768 ? [] : Array.from({ length: particleCount }, (_, index) => createParticle(index, particleCount));
+      particles = width < 768 ? [] : Array.from({ length: count }, () => createParticle());
       if (reduceMotion) draw(performance.now() / 1000);
     };
 
