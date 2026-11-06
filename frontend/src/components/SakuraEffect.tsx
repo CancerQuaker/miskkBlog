@@ -105,6 +105,19 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
 
     const draw = (time: number) => {
       ctx.clearRect(0, 0, width, height);
+      // 连线放在粒子下层，透明度随牵引和退出状态同步变化
+      ctx.strokeStyle = primary;
+      ctx.lineWidth = 0.7;
+      ctx.lineCap = 'round';
+      for (const p of particles) {
+        if (p.mode === 'ambient' || p.pull < 0.015) continue;
+        ctx.globalAlpha = p.pull * p.fade * 0.32;
+        ctx.beginPath();
+        ctx.moveTo(pointer.x, pointer.y);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
       ctx.fillStyle = primary;
       ctx.shadowColor = primaryLight;
       ctx.shadowBlur = 7;
