@@ -28,6 +28,8 @@ const TAU = Math.PI * 2;
 const ATTRACTION_RADIUS = 220;
 const ATTRACTED_COUNT = 16;
 const PARTICLE_LINK_DISTANCE = 110;
+const PARTICLE_REPULSION_RADIUS = 36;
+const PARTICLE_REPULSION_STRENGTH = 0.65;
 /** 卡片与浮层保持环境漂浮，只有页面背景及留白触发指针牵引 */
 const NON_BACKGROUND_SELECTOR = [
   '.card',
@@ -236,22 +238,54 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
         }
         return;
       }
-      // 只响应新进入范围的粒子；队列满时，新粒子替换最早加入的成员
+      // 新候选粒子按距离由近到远处理，只替换比它更远的牵引粒子
       const entering = particles
         .filter((p) => p.mode === 'ambient' && p.availableAt <= now && !p.inRange
           && Math.hypot(p.x - pointer.x, p.y - pointer.y) <= ATTRACTION_RADIUS)
-        .sort((a, b) => Math.hypot(b.x - pointer.x, b.y - pointer.y)
-          - Math.hypot(a.x - pointer.x, a.y - pointer.y));
+        .sort((a, b) => Math.hypot(a.x - pointer.x, a.y - pointer.y)
+          - Math.hypot(b.x - pointer.x, b.y - pointer.y));
       for (const p of entering) {
         if (attractionQueue.length >= ATTRACTED_COUNT) {
-          const oldest = attractionQueue.shift();
-          if (oldest) retire(oldest);
+          let farthestIndex = 0;
+          let farthestDistance = -1;
+          for (let i = 0; i < attractionQueue.length; i++) {
+            const candidate = attractionQueue[i];
+            const distance = Math.hypot(candidate.x - pointer.x, candidate.y - pointer.y);
+            if (distance > farthestDistance) {
+              farthestDistance = distance;
+              farthestIndex = i;
+            }
+          }
+          if (Math.hypot(p.x - pointer.x, p.y - pointer.y) >= farthestDistance) continue;
+          const [farthest] = attractionQueue.splice(farthestIndex, 1);
+          if (farthest) retire(farthest);
         }
         attract(p, now);
       }
       for (const p of particles) {
         if (p.mode === 'ambient') {
           p.inRange = Math.hypot(p.x - pointer.x, p.y - pointer.y) <= ATTRACTION_RADIUS;
+        }
+      }
+    };
+
+    const applyRepulsion = (step: number) => {
+      for (let i = 0; i < attractionQueue.length; i++) {
+        const a = attractionQueue[i];
+        for (let j = i + 1; j < attractionQueue.length; j++) {
+          const b = attractionQueue[j];
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const distance = Math.hypot(dx, dy);
+          if (distance >= PARTICLE_REPULSION_RADIUS) continue;
+          const nx = distance > 0.001 ? dx / distance : Math.cos(a.phase);
+          const ny = distance > 0.001 ? dy / distance : Math.sin(a.phase);
+          const force = (1 - distance / PARTICLE_REPULSION_RADIUS)
+            * PARTICLE_REPULSION_STRENGTH * Math.min(a.pull, b.pull) * step;
+          a.x -= nx * force;
+          a.y -= ny * force;
+          b.x += nx * force;
+          b.y += ny * force;
         }
       }
     };
@@ -287,6 +321,7 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
         p.y += (targetY - p.y) * ease;
       }
 
+      applyRepulsion(step);
       particles = particles.filter((p) => p.mode !== 'retiring' || p.fade > 0);
       draw(time);
       frame = window.requestAnimationFrame(animate);
