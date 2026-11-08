@@ -114,7 +114,6 @@ public class ArticleServiceImpl implements ArticleService {
         ArticleDetailVO vo = new ArticleDetailVO();
         BeanUtils.copyProperties(article, vo);
         vo.setPinned(article.getPinned() != null && article.getPinned() == 1);
-        vo.setWordCount((long) (article.getContent() == null ? 0 : article.getContent().length()));
 
         vo.setCategoryName(categoryName(article.getCategoryId()));
         vo.setTags(findTagsOf(id));

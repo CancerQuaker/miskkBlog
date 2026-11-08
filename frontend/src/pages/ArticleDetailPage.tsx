@@ -13,6 +13,11 @@ import ShareButtons from '../components/ShareButtons';
 import { DefaultAvatar } from '../components/Common';
 import { useAuthStore } from '../stores/authStore';
 
+const formatReadingTime = (seconds: number) => {
+  const minutes = Math.floor(seconds / 60);
+  return minutes > 0 ? `${minutes} 分 ${seconds % 60} 秒` : `${seconds} 秒`;
+};
+
 export default function ArticleDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -21,6 +26,38 @@ export default function ArticleDetailPage() {
   const [error, setError] = useState('');
   const [liked, setLiked] = useState(false);
   const [toc, setToc] = useState<TocItem[]>([]);
+  const [readingSeconds, setReadingSeconds] = useState(0);
+
+  // 仅累计文章页可见时的停留时长，切换文章后重新计时
+  useEffect(() => {
+    if (!id) return;
+    setReadingSeconds(0);
+    let accumulatedMs = 0;
+    let startedAt: number | null = document.hidden ? null : performance.now();
+
+    const update = () => {
+      if (startedAt === null) return;
+      setReadingSeconds(Math.floor((accumulatedMs + performance.now() - startedAt) / 1000));
+    };
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (startedAt !== null) {
+          accumulatedMs += performance.now() - startedAt;
+          startedAt = null;
+          setReadingSeconds(Math.floor(accumulatedMs / 1000));
+        }
+      } else if (startedAt === null) {
+        startedAt = performance.now();
+      }
+    };
+
+    const timer = window.setInterval(update, 1000);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [id]);
 
   useEffect(() => {
     if (!id) return;
@@ -45,8 +82,6 @@ export default function ArticleDetailPage() {
   if (!article) {
     return <div style={{ textAlign: 'center', padding: 120 }}><Spin size="large" /></div>;
   }
-
-  const readingMinutes = Math.max(1, Math.floor(article.wordCount / 400));
 
   const likeChange = (isLiked: boolean, count: number) => {
     setLiked(isLiked);
@@ -103,7 +138,7 @@ export default function ArticleDetailPage() {
               <span><EyeOutlined /> {article.views} 浏览</span>
               <span><MessageOutlined /> {article.comments} 评论</span>
               <span><ShareAltOutlined /> {article.shares} 分享</span>
-              <span><FileTextOutlined /> {readingMinutes} 分钟阅读</span>
+              <span><FileTextOutlined /> 已阅读 {formatReadingTime(readingSeconds)}</span>
             </div>
 
             <div style={{ display: 'flex', gap: 8, margin: '14px 0 4px', flexWrap: 'wrap' }}>

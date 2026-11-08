@@ -36,7 +36,6 @@ export interface ArticleCard {
 
 export interface ArticleDetail extends ArticleCard {
   content: string;
-  wordCount: number;
   liked?: boolean;
   prevId?: number;
   prevTitle?: string;

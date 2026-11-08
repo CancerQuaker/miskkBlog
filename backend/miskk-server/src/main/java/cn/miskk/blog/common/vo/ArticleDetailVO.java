@@ -26,8 +26,6 @@ public class ArticleDetailVO {
     private Long shares;
     private Boolean pinned;
     private Boolean liked;
-    /** 字数 */
-    private Long wordCount;
     private LocalDateTime publishedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
