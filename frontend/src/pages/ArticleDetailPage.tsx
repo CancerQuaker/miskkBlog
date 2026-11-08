@@ -39,6 +39,18 @@ export default function ArticleDetailPage() {
       if (startedAt === null) return;
       setReadingSeconds(Math.floor((accumulatedMs + performance.now() - startedAt) / 1000));
     };
+    let timer: number | undefined;
+    const stopTimer = () => {
+      if (timer !== undefined) {
+        window.clearInterval(timer);
+        timer = undefined;
+      }
+    };
+    const startTimer = () => {
+      if (timer === undefined) {
+        timer = window.setInterval(update, 30_000);
+      }
+    };
     const handleVisibilityChange = () => {
       if (document.hidden) {
         if (startedAt !== null) {
@@ -46,15 +58,19 @@ export default function ArticleDetailPage() {
           startedAt = null;
           setReadingSeconds(Math.floor(accumulatedMs / 1000));
         }
+        stopTimer();
       } else if (startedAt === null) {
         startedAt = performance.now();
+        startTimer();
       }
     };
 
-    const timer = window.setInterval(update, 1000);
+    if (!document.hidden) {
+      startTimer();
+    }
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
-      window.clearInterval(timer);
+      stopTimer();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [id]);
