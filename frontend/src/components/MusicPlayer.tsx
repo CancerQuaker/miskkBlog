@@ -54,16 +54,16 @@ function parseLRC(text: string): LyricLine[] {
   return result.sort((a, b) => a.time - b.time);
 }
 
-/** 拉取 Meting 在线歌单：主 API 失败后依次尝试备用 API，字段兼容 title/name、author/artist 两种返回 */
-async function fetchMetingPlaylist(): Promise<MusicTrack[]> {
+/** 拉取 Meting 单曲或整单：主 API 失败后依次尝试备用 API，字段兼容 title/name、author/artist 两种返回 */
+async function fetchMetingTracks(id: string, type: string): Promise<MusicTrack[]> {
   const m = musicConfig.meting;
   const apis = [m.api, ...(m.fallbackApis ?? [])];
   for (const base of apis) {
     try {
       const url = base
         .replace(':server', m.server)
-        .replace(':type', m.type)
-        .replace(':id', m.id)
+        .replace(':type', type)
+        .replace(':id', id)
         .replace(':r', String(Math.random()));
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -82,6 +82,21 @@ async function fetchMetingPlaylist(): Promise<MusicTrack[]> {
     }
   }
   throw new Error('所有 Meting API 均不可用');
+}
+
+/** 精选单曲保持配置顺序，失效歌曲单独跳过；清空 songIds 时回退到整单 */
+async function fetchMetingPlaylist(): Promise<MusicTrack[]> {
+  const m = musicConfig.meting;
+  if (!m.songIds.length) return fetchMetingTracks(m.id, m.type);
+
+  const results = await Promise.allSettled(m.songIds.map((id) => fetchMetingTracks(id, 'song')));
+  const list = results.flatMap((result, i) => {
+    if (result.status === 'fulfilled') return result.value;
+    console.warn('[music] 精选歌曲加载失败，已跳过:', m.songIds[i], result.reason);
+    return [];
+  });
+  if (!list.length) throw new Error('精选歌曲均加载失败');
+  return list;
 }
 
 /**
@@ -375,7 +390,7 @@ export default function MusicPlayer({ panelOpen, onTogglePanel }: { panelOpen: b
             <div className="music-cover-box">
               {current?.cover && (
                 <img
-                  key={current.cover}
+                  key={`${index}:${current.cover}`}
                   className="music-cover"
                   src={current.cover}
                   alt=""

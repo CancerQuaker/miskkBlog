@@ -63,7 +63,7 @@ export interface MusicTrack {
 
 /**
  * 音乐播放器配置（参考 cuteleaf.cn / Firefly 主题的实现）：
- * - mode 'meting'：通过 Meting API 拉取网易云歌单（默认，与参考站同款目录）；
+ * - mode 'meting'：通过 Meting API 拉取精选网易云单曲（songIds），也可清空后改用整单 id；
  *   主 API 失效时按 fallbackApis 顺序自动重试。
  * - mode 'local'：使用本地 mp3（放 frontend/public/music/，支持 cover 封面与 lrc 歌词）。
  * 公开 Meting 站点稳定性参差：injahow 目前全链路可用（音频 302 到网易 CDN），moeyao 音频正常但歌词/封面有杂讯，i-meto 歌词正常但音频代理已挂。
@@ -84,7 +84,25 @@ export const musicConfig = {
     ],
     server: 'netease',
     type: 'playlist',
-    /** 网易云歌单：知更鸟《空气中的听觉幻术》单曲+伴奏（与 cuteleaf.cn 参考站相同目录） */
+    /** 精选单曲 ID：非空时优先使用；每首歌分别拉取音频、歌词与专辑封面 */
+    songIds: [
+      '186016', // 周杰伦 - 晴天
+      '1330348068', // 买辣椒也用券 - 起风了
+      '25727803', // 林俊杰 - 修炼爱情
+      '287319', // 孙燕姿 - 遇见
+      '28815250', // 朴树 - 平凡之路
+      '536622304', // 米津玄师 - Lemon
+      '496869422', // Daoko × 米津玄师 - 打上花火
+      '426881487', // RADWIMPS - 前前前世 (movie ver.)
+      '432821964', // 星野源 - 恋
+      '1409311773', // YOASOBI - 夜に駆ける
+      '26060065', // OneRepublic - Counting Stars
+      '461347998', // The Chainsmokers × Coldplay - Something Just Like This
+      '30953009', // Wiz Khalifa × Charlie Puth - See You Again
+      '451703096', // Ed Sheeran - Shape of You
+      '29019227', // Maroon 5 - Sugar
+    ],
+    /** 备用整单：songIds 清空后使用 */
     id: '10046455237',
   },
   /** 本地歌单（mode 为 local 时使用） */
