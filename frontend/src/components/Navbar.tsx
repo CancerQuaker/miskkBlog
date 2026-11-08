@@ -166,7 +166,7 @@ function AppearancePanel() {
       <div className="effect-row">
         <div className="effect-info">
           <div className="effect-label">🦊 看板娘</div>
-          <div className="effect-desc">右下角 Live2D 小狐狸</div>
+          <div className="effect-desc">右下角 Live2D 小狐狸，可拖动</div>
         </div>
         <Switch size="small" checked={live2d} onChange={setLive2d} />
       </div>
