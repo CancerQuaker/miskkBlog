@@ -48,9 +48,10 @@ export function randomDustX(random: () => number): number {
   return random() * 100;
 }
 
-/** Canvas 柔光尘：固定 128 个粒子随机分布于独立椭圆区域，260px 内最多牵引 16 个 */
+/** Canvas 柔光尘：固定 128 个粒子随机分布于独立椭圆区域，鼠标牵引可独立关闭 */
 export default function SakuraEffect({ count = 128 }: { count?: number }) {
   const sakura = useThemeStore((s) => s.sakura);
+  const particleAttraction = useThemeStore((s) => s.particleAttraction);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -289,10 +290,12 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
     window.addEventListener('resize', resize);
 
     if (!reduceMotion) {
-      window.addEventListener('pointermove', onPointerMove, { passive: true });
-      window.addEventListener('blur', disablePointer);
-      window.addEventListener('scroll', onScroll, { passive: true });
-      document.documentElement.addEventListener('mouseleave', disablePointer);
+      if (particleAttraction) {
+        window.addEventListener('pointermove', onPointerMove, { passive: true });
+        window.addEventListener('blur', disablePointer);
+        window.addEventListener('scroll', onScroll, { passive: true });
+        document.documentElement.addEventListener('mouseleave', disablePointer);
+      }
       frame = window.requestAnimationFrame(animate);
     }
 
@@ -307,7 +310,7 @@ export default function SakuraEffect({ count = 128 }: { count?: number }) {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     };
-  }, [sakura, count]);
+  }, [sakura, particleAttraction, count]);
 
   return <canvas ref={canvasRef} className="starfield-stage" aria-hidden />;
 }

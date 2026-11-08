@@ -82,10 +82,13 @@ function BrightnessPanel() {
   );
 }
 
-/** 外观面板：主题色 + 特效开关（背景光尘 / 鼠标样式 / 看板娘） */
+/** 外观面板：主题色 + 特效开关（背景光尘 / 鼠标牵引 / 鼠标样式 / 看板娘） */
 function AppearancePanel() {
-  const { mode, accent, setAccent, sakura, setSakura, starCursor, setStarCursor, live2d, setLive2d } =
-    useThemeStore();
+  const {
+    mode, accent, setAccent,
+    sakura, setSakura, particleAttraction, setParticleAttraction,
+    starCursor, setStarCursor, live2d, setLive2d,
+  } = useThemeStore();
   const defaultAccent = resolvePrimary(null, resolveTheme(mode));
   const [pickerColor, setPickerColor] = useState(accent || defaultAccent);
   const scheduler = useMemo(() => createAccentScheduler(
@@ -142,9 +145,16 @@ function AppearancePanel() {
       <div className="effect-row">
         <div className="effect-info">
           <div className="effect-label">◌ 微光氛围</div>
-          <div className="effect-desc">固定区域 · 近距牵引</div>
+          <div className="effect-desc">固定区域 · 柔光漂浮</div>
         </div>
         <Switch size="small" checked={sakura} onChange={setSakura} />
+      </div>
+      <div className="effect-row">
+        <div className="effect-info">
+          <div className="effect-label">◎ 鼠标牵引</div>
+          <div className="effect-desc">牵引粒子 · 邻近连线</div>
+        </div>
+        <Switch size="small" checked={particleAttraction} onChange={setParticleAttraction} />
       </div>
       <div className="effect-row">
         <div className="effect-info">

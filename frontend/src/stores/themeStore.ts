@@ -19,13 +19,15 @@ interface ThemeState {
   mode: ThemeMode;
   /** 自定义主题色（hex），null 表示用各主题内置色 */
   accent: string | null;
-  /** 特效开关：柔光尘背景 / 星星鼠标样式 / Live2D 看板娘 */
+  /** 特效开关：柔光尘背景 / 鼠标牵引粒子 / 星星鼠标样式 / Live2D 看板娘 */
   sakura: boolean;
+  particleAttraction: boolean;
   starCursor: boolean;
   live2d: boolean;
   setMode: (mode: ThemeMode) => void;
   setAccent: (accent: string | null) => void;
   setSakura: (on: boolean) => void;
+  setParticleAttraction: (on: boolean) => void;
   setStarCursor: (on: boolean) => void;
   setLive2d: (on: boolean) => void;
 }
@@ -37,11 +39,13 @@ export const useThemeStore = create<ThemeState>()(
       mode: 'system',
       accent: null,
       sakura: true,
+      particleAttraction: true,
       starCursor: true,
       live2d: true,
       setMode: (mode) => set({ mode }),
       setAccent: (accent) => set({ accent }),
       setSakura: (on) => set({ sakura: on }),
+      setParticleAttraction: (on) => set({ particleAttraction: on }),
       setStarCursor: (on) => set({ starCursor: on }),
       setLive2d: (on) => set({ live2d: on }),
     }),
