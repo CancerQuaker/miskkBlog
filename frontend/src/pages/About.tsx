@@ -3,12 +3,15 @@ import { GithubOutlined, MailOutlined, RocketOutlined, SmileOutlined } from '@an
 import MarkdownView from '../components/MarkdownView';
 import { ChibiImage, CHIBI_LIST } from '../components/Chibi';
 import { aboutConfig, siteConfig } from '../config/site';
+import { useAuthStore } from '../stores/authStore';
 
 /**
  * 关于页：作者本人 + 项目介绍。
  */
 export default function About() {
   const { author, project } = aboutConfig;
+  const user = useAuthStore((s) => s.user);
+  const authorAvatar = user?.role === 1 && user.avatar ? user.avatar : '/chibi/furina.png';
   const projectMd = [
     '# 项目介绍',
     '',
@@ -22,7 +25,7 @@ export default function About() {
     <div className="page-container" style={{ maxWidth: 860 }}>
       {/* 作者卡片 */}
       <div className="card fade-in" style={{ padding: '30px', textAlign: 'center', marginBottom: 20 }}>
-        <Avatar size={96} src="/chibi/furina.png" style={{ background: 'var(--primary-weak)', fontSize: 38, fontWeight: 700 }}>
+        <Avatar size={96} src={authorAvatar} style={{ background: 'var(--primary-weak)', fontSize: 38, fontWeight: 700 }}>
           {author.avatarText}
         </Avatar>
         <h1 style={{ margin: '14px 0 6px' }}>{author.name}</h1>

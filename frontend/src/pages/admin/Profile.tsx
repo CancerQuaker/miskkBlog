@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button, Card, Col, Form, Input, message, Row, Upload } from 'antd';
 import { UploadOutlined, LockOutlined } from '@ant-design/icons';
 import { authApi } from '../../api/auth';
+import { DefaultAvatar } from '../../components/Common';
 import { useAuthStore } from '../../stores/authStore';
 
 /**
@@ -43,23 +44,26 @@ export default function Profile() {
             qq: user.qq, wechat: user.wechat, github: user.github,
           }}>
             <Form.Item label="头像">
-              <Upload
-                accept="image/*"
-                showUploadList={false}
-                beforeUpload={async (file) => {
-                  try {
-                    const url = await authApi.uploadImage(file);
-                    await authApi.updateProfile({ avatar: url });
-                    await refreshMe();
-                    message.success('头像已更新捏~');
-                  } catch (e: any) {
-                    message.error(e.message);
-                  }
-                  return false;
-                }}
-              >
-                <Button icon={<UploadOutlined />}>上传新头像</Button>
-              </Upload>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <DefaultAvatar user={user} size={96} />
+                <Upload
+                  accept="image/*"
+                  showUploadList={false}
+                  beforeUpload={async (file) => {
+                    try {
+                      const url = await authApi.uploadImage(file);
+                      await authApi.updateProfile({ avatar: url });
+                      await refreshMe();
+                      message.success('头像已更新捏~');
+                    } catch (e: any) {
+                      message.error(e.message);
+                    }
+                    return false;
+                  }}
+                >
+                  <Button icon={<UploadOutlined />}>上传新头像</Button>
+                </Upload>
+              </div>
             </Form.Item>
             <Form.Item name="nickname" label="昵称" rules={[{ required: true, message: '昵称不能为空' }]}>
               <Input maxLength={16} />

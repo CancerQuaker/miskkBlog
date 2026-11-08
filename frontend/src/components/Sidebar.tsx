@@ -12,6 +12,7 @@ import { CategoryVO, TagVO } from '../api/article';
 import { DefaultAvatar } from './Common';
 import { ChibiImage } from './Chibi';
 import { aboutConfig, siteConfig } from '../config/site';
+import { useAuthStore } from '../stores/authStore';
 
 /** 左侧资料卡 + 分类标签 */
 export default function Sidebar({
@@ -21,11 +22,14 @@ export default function Sidebar({
   categories?: CategoryVO[];
   tags?: TagVO[];
 }) {
+  const user = useAuthStore((s) => s.user);
+  const webmasterAvatar = user?.role === 1 && user.avatar ? user.avatar : '/chibi/furina.png';
+
   return (
     <aside className="layout-sidebar">
       <div className="card sidebar-widget fade-in" style={{ textAlign: 'center' }}>
-        {/* 站长名片：固定显示站长的芙宁娜头像与资料，不随登录用户变化 */}
-        <Avatar size={84} src="/chibi/furina.png" icon={<UserOutlined />} style={{ background: 'var(--primary-weak)', fontSize: 30 }} />
+        {/* 站长名片：资料固定；当前用户为管理员时，头像跟随其个人头像 */}
+        <Avatar size={84} src={webmasterAvatar} icon={<UserOutlined />} style={{ background: 'var(--primary-weak)', fontSize: 30 }} />
         <h3 style={{ margin: '12px 0 4px' }}>{aboutConfig.author.name}</h3>
         <p style={{ color: 'var(--text-sub)', fontSize: 13, margin: 0 }}>
           一只喜欢写代码的小狐狸捏~
