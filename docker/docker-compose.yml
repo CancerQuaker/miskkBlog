@@ -67,7 +67,8 @@ services:
     #ports:
     #  - "${POSTGRES_PORT:-5432}:${POSTGRES_SERVER_PORT:-5432}"
     volumes:
-      - pg-data:/var/lib/postgresql/data
+      # PostgreSQL 18+ 的 PGDATA 为 /var/lib/postgresql/18/docker；挂载父目录以保留完整版本化数据
+      - pg-data:/var/lib/postgresql
       # 初始化脚本可在 .env 用 SQL_INIT_FILE 改指；仅空数据卷首次启动时执行
       - ${SQL_INIT_FILE:-../sql/miskk_blog.sql}:/docker-entrypoint-initdb.d/miskk_blog.sql:ro
     healthcheck:

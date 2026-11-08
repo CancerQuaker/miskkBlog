@@ -48,7 +48,8 @@ services:
       POSTGRES_INITDB_ARGS: "--encoding=UTF8"
     command: ["postgres", "-c", "shared_buffers=128MB", "-c", "max_connections=60"]
     volumes:
-      - pg-data:/var/lib/postgresql/data
+      # PostgreSQL 18+ 的 PGDATA 为 /var/lib/postgresql/18/docker；挂载父目录以保留完整版本化数据
+      - pg-data:/var/lib/postgresql
       - ../sql:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-miskk} -d miskk_blog"]

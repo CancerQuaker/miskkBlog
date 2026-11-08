@@ -173,7 +173,7 @@ docker compose up -d
 #### 通用说明
 
 - **安全模型**：默认只有 nginx 暴露 `SITE_PORT`（默认 80）端口，PostgreSQL/Redis/后端都在 compose 内部网络（`docker-compose.yml` 另把后端映射到宿主机 `127.0.0.1:8100`，便于宿主机 nginx 反代），云安全组只需放行 80/443。`SITE_PORT` / `NGINX_PORT` / `APP_PORT` 等可在 `.env` 自定义；PostgreSQL/Redis 的宿主机映射在 compose 里以注释预留。
-- **数据备份**：`pg-data` / `redis-data` 卷 + `docker/uploads/` 目录（上传图片）。
+- **数据备份**：`pg-data` / `redis-data` 卷 + `docker/uploads/` 目录（上传图片）。PostgreSQL 18+ 的命名卷挂载到 `/var/lib/postgresql`，实际数据位于 `18/docker` 等版本化子目录；从旧的 `/var/lib/postgresql/data` 挂载方式迁移前，请先用 `pg_dump` 备份。
 - **HTTPS**：宿主机再加一层 Caddy / certbot 终止证书，反代到 80 即可。
 - **内存**：单个 Java 进程 + 单库，2核2G 即可从容运行。本机产物版默认 mem_limit 基线为 app 512m / PostgreSQL 384m / Redis 64m（约 1G）；更紧张时设 `JAVA_TOOL_OPTIONS=-Xmx256m`。
 - **默认账号**：首次初始化后管理员为 `admin / admin123`，部署后请尽快改密。
