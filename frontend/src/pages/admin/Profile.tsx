@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, Card, Col, Form, Input, message, Row, Upload } from 'antd';
 import { UploadOutlined, LockOutlined } from '@ant-design/icons';
 import { authApi } from '../../api/auth';
+import AvatarCropper from '../../components/AvatarCropper';
 import { DefaultAvatar } from '../../components/Common';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -13,6 +14,28 @@ export default function Profile() {
   const [form] = Form.useForm();
   const [pwdForm] = Form.useForm();
   const [saving, setSaving] = useState(false);
+  const [cropSource, setCropSource] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  useEffect(() => {
+    if (!cropSource) return;
+    return () => URL.revokeObjectURL(cropSource);
+  }, [cropSource]);
+
+  const uploadAvatar = async (file: File) => {
+    setAvatarUploading(true);
+    try {
+      const url = await authApi.uploadImage(file);
+      await authApi.updateProfile({ avatar: url });
+      await refreshMe();
+      setCropSource(null);
+      message.success('头像已更新捏~');
+    } catch {
+      // 请求层已统一提示错误，保留裁剪弹窗便于重试。
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
 
   const save = async () => {
     const values = await form.validateFields();
@@ -36,76 +59,83 @@ export default function Profile() {
   if (!user) return null;
 
   return (
-    <Row gutter={16}>
-      <Col xs={24} lg={14}>
-        <Card title="个人资料">
-          <Form form={form} layout="vertical" initialValues={{
-            nickname: user.nickname, bio: user.bio, email: user.email,
-            qq: user.qq, wechat: user.wechat, github: user.github,
-          }}>
-            <Form.Item label="头像">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <DefaultAvatar user={user} size={96} />
-                <Upload
-                  accept="image/*"
-                  showUploadList={false}
-                  beforeUpload={async (file) => {
-                    try {
-                      const url = await authApi.uploadImage(file);
-                      await authApi.updateProfile({ avatar: url });
-                      await refreshMe();
-                      message.success('头像已更新捏~');
-                    } catch (e: any) {
-                      message.error(e.message);
-                    }
-                    return false;
-                  }}
-                >
-                  <Button icon={<UploadOutlined />}>上传新头像</Button>
-                </Upload>
-              </div>
-            </Form.Item>
-            <Form.Item name="nickname" label="昵称" rules={[{ required: true, message: '昵称不能为空' }]}>
-              <Input maxLength={16} />
-            </Form.Item>
-            <Form.Item name="bio" label="个性签名">
-              <Input.TextArea rows={2} maxLength={255} />
-            </Form.Item>
-            <Form.Item name="email" label="邮箱">
-              <Input />
-            </Form.Item>
-            <Form.Item name="qq" label="QQ">
-              <Input maxLength={20} />
-            </Form.Item>
-            <Form.Item name="wechat" label="微信">
-              <Input maxLength={64} />
-            </Form.Item>
-            <Form.Item name="github" label="GitHub 用户名">
-              <Input maxLength={64} />
-            </Form.Item>
-            <Button type="primary" onClick={save} loading={saving}>保存修改</Button>
-          </Form>
-        </Card>
-      </Col>
-      <Col xs={24} lg={10}>
-        <Card title="修改密码">
-          <Form form={pwdForm} layout="vertical">
-            <Form.Item name="oldPassword" label="原密码" rules={[{ required: true, message: '请输入原密码' }]}>
-              <Input.Password prefix={<LockOutlined />} />
-            </Form.Item>
-            <Form.Item name="newPassword" label="新密码（6-32 位）" rules={[
-              { required: true, message: '请输入新密码' },
-              { min: 6, max: 32, message: '长度为 6-32 位' },
-            ]}>
-              <Input.Password prefix={<LockOutlined />} />
-            </Form.Item>
-            <Button onClick={changePwd}>确认修改</Button>
-          </Form>
-          <p style={{ color: 'var(--text-faint)', fontSize: 12.5, marginTop: 12 }}>
-            提示：使用 GitHub 等第三方登录的账号设置密码后即可用密码登录。
-          </p>
-        </Card>
-      </Col>
-    </Row>
+    <>
+      <Row gutter={16}>
+        <Col xs={24} lg={14}>
+          <Card title="个人资料">
+            <Form form={form} layout="vertical" initialValues={{
+              nickname: user.nickname, bio: user.bio, email: user.email,
+              qq: user.qq, wechat: user.wechat, github: user.github,
+            }}>
+              <Form.Item label="头像">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <DefaultAvatar user={user} size={96} />
+                  <Upload
+                    accept=".jpg,.jpeg,.png,.gif,.webp"
+                    showUploadList={false}
+                    beforeUpload={(file) => {
+                      if (file.size > 5 * 1024 * 1024) {
+                        message.error('图片大小不能超过 5MB');
+                        return Upload.LIST_IGNORE;
+                      }
+                      setCropSource(URL.createObjectURL(file));
+                      return Upload.LIST_IGNORE;
+                    }}
+                  >
+                    <Button icon={<UploadOutlined />}>选择并调整头像</Button>
+                  </Upload>
+                </div>
+              </Form.Item>
+              <Form.Item name="nickname" label="昵称" rules={[{ required: true, message: '昵称不能为空' }]}>
+                <Input maxLength={16} />
+              </Form.Item>
+              <Form.Item name="bio" label="个性签名">
+                <Input.TextArea rows={2} maxLength={255} />
+              </Form.Item>
+              <Form.Item name="email" label="邮箱">
+                <Input />
+              </Form.Item>
+              <Form.Item name="qq" label="QQ">
+                <Input maxLength={20} />
+              </Form.Item>
+              <Form.Item name="wechat" label="微信">
+                <Input maxLength={64} />
+              </Form.Item>
+              <Form.Item name="github" label="GitHub 用户名">
+                <Input maxLength={64} />
+              </Form.Item>
+              <Button type="primary" onClick={save} loading={saving}>保存修改</Button>
+            </Form>
+          </Card>
+        </Col>
+        <Col xs={24} lg={10}>
+          <Card title="修改密码">
+            <Form form={pwdForm} layout="vertical">
+              <Form.Item name="oldPassword" label="原密码" rules={[{ required: true, message: '请输入原密码' }]}>
+                <Input.Password prefix={<LockOutlined />} />
+              </Form.Item>
+              <Form.Item name="newPassword" label="新密码（6-32 位）" rules={[
+                { required: true, message: '请输入新密码' },
+                { min: 6, max: 32, message: '长度为 6-32 位' },
+              ]}>
+                <Input.Password prefix={<LockOutlined />} />
+              </Form.Item>
+              <Button onClick={changePwd}>确认修改</Button>
+            </Form>
+            <p style={{ color: 'var(--text-faint)', fontSize: 12.5, marginTop: 12 }}>
+              提示：使用 GitHub 等第三方登录的账号设置密码后即可用密码登录。
+            </p>
+          </Card>
+        </Col>
+      </Row>
+      {cropSource && (
+        <AvatarCropper
+          imageUrl={cropSource}
+          uploading={avatarUploading}
+          onCancel={() => setCropSource(null)}
+          onConfirm={uploadAvatar}
+        />
+      )}
+    </>
   );
 }
