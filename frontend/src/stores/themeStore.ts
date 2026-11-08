@@ -63,9 +63,9 @@ export function resolveTheme(mode: ThemeMode): 'light' | 'dark' | 'eye' {
 
 /** 各主题内置主色（与 global.css 各主题块的 --primary 保持一致） */
 export const THEME_PRIMARY: Record<'light' | 'dark' | 'eye', string> = {
-  light: '#5696ff',
+  light: '#7b6cf0',
   dark: '#4ecbe8',
-  eye: '#7b6cf0',
+  eye: '#e85d75',
 };
 
 /** ECharts 等 canvas 渲染无法消费 var(--primary)，用它在 JS 侧解析实际主色 */

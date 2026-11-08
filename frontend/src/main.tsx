@@ -15,7 +15,7 @@ dayjs.locale('zh-cn');
 const antdThemes: Record<string, any> = {
   light: {
     token: {
-      colorPrimary: '#5696ff',
+      colorPrimary: '#7b6cf0',
       borderRadius: 10,
       colorBgLayout: 'transparent',
       colorTextBase: '#38354a',
@@ -34,7 +34,7 @@ const antdThemes: Record<string, any> = {
   },
   eye: {
     token: {
-      colorPrimary: '#7b6cf0',
+      colorPrimary: '#e85d75',
       borderRadius: 10,
       colorBgContainer: '#e4f3e3',
       colorBgElevated: '#eaf6e9',
