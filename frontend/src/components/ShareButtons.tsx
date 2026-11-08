@@ -29,7 +29,8 @@ export default function ShareButtons({ articleId, title }: { articleId: number; 
 
   const shareWechat = async () => {
     report('wechat');
-    const dataUrl = await QRCode.toDataURL(url, { width: 220, margin: 1, color: { dark: '#80a942' } });
+    const primary = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
+    const dataUrl = await QRCode.toDataURL(url, { width: 220, margin: 1, color: { dark: primary || '#5696ff' } });
     setQrData(dataUrl);
     setQrOpen(true);
   };

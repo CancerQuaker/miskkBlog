@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 
 export type ThemeMode = 'light' | 'dark' | 'eye' | 'system';
 
-/** 主题色预设（星紫为默认，null 表示跟随主题内置色） */
+/** 主题色预设（null 表示跟随主题内置色） */
 export const ACCENT_PRESETS: { color: string | null; name: string }[] = [
   { color: null, name: '默认' },
   { color: '#7b6cf0', name: '星紫' },
@@ -59,9 +59,9 @@ export function resolveTheme(mode: ThemeMode): 'light' | 'dark' | 'eye' {
 
 /** 各主题内置主色（与 global.css 各主题块的 --primary 保持一致） */
 export const THEME_PRIMARY: Record<'light' | 'dark' | 'eye', string> = {
-  light: '#80a942',
-  dark: '#97b864',
-  eye: '#80a942',
+  light: '#5696ff',
+  dark: '#4ecbe8',
+  eye: '#7b6cf0',
 };
 
 /** ECharts 等 canvas 渲染无法消费 var(--primary)，用它在 JS 侧解析实际主色 */
