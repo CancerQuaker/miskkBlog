@@ -7,16 +7,16 @@
 #   mvn clean install -DskipTests     # 仓库根目录执行，生成 backend/miskk-server/target/*.jar
 #   cd frontend && npm run build      # 生成 frontend/dist
 #
-# 产物默认取 backend/miskk-server/target 与 frontend/dist，可在 .env 用 APP_JAR_DIR /
-# FRONTEND_DIST_DIR 改指任意目录（见 .env.example「本机产物路径」一节）。
+# jar / dist / 初始化 SQL / nginx 模板默认取仓库内对应文件，可在 .env 用 APP_JAR_FILE、
+# FRONTEND_DIST_DIR、SQL_INIT_FILE、NGINX_CONF_FILE 改指其他位置（见 .env.example）。
 #
 # 用法：
 #   cp .env.example .env              # 必填 POSTGRES_PASSWORD / JWT_SECRET（与 auto 版通用）
 #   docker compose up -d              # 全栈一套启动：PostgreSQL/Redis/后端/nginx
 #   docker compose up -d db redis     # 只起基础设施（后端跑 IDEA、前端跑 Vite 时）
 #
-# 改了代码想生效：本机重新构建，再 docker compose restart app nginx
-# （jar 与 dist 是挂载进容器的，restart 即用新产物）。
+# 改了代码想生效：本机重新构建，再 docker compose up -d --force-recreate app nginx
+# （jar 是单文件挂载，需重建 app 容器确保指向新文件；dist 目录内容更新会直接生效）。
 #
 # 资源基线按 2核2G 小内存服务器调优：各服务带 mem_limit（合计 ~1G，余量充足），
 # 后端 JVM 堆按容器上限的 60% 自适应 + SerialGC；PostgreSQL 限 shared_buffers、
@@ -68,7 +68,8 @@ services:
     #  - "${POSTGRES_PORT:-5432}:${POSTGRES_SERVER_PORT:-5432}"
     volumes:
       - pg-data:/var/lib/postgresql/data
-      - ../sql:/docker-entrypoint-initdb.d:ro
+      # 初始化脚本可在 .env 用 SQL_INIT_FILE 改指；仅空数据卷首次启动时执行
+      - ${SQL_INIT_FILE:-../sql/miskk_blog.sql}:/docker-entrypoint-initdb.d/miskk_blog.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-miskk} -d miskk_blog"]
       interval: 5s
@@ -89,7 +90,7 @@ services:
     volumes:
       - redis-data:/data
 
-  # ---- 后端（单体）：挂载本机 jar 目录（.env 可改指，默认 backend/miskk-server/target），通配符启动可执行 jar ----
+  # ---- 后端（单体）：挂载 .env 指定的可执行 jar，默认取 backend/miskk-server/target ----
   app:
     image: eclipse-temurin:17-jre
     container_name: miskk-app
@@ -101,11 +102,11 @@ services:
       SERVER_PORT: ${APP_PORT:-8100}
       UPLOAD_DIR: /data/uploads
     volumes:
-      # 目录内应只有一个可执行 jar（*.jar.original 不参与匹配）
-      - ${APP_JAR_DIR:-../backend/miskk-server/target}:/app
+      # 固定映射到容器内 /app/app.jar，宿主机文件名和版本号不受限制
+      - ${APP_JAR_FILE:-../backend/miskk-server/target/miskk-server-1.0.0.jar}:/app/app.jar:ro
       - ./uploads:/data/uploads
-    # glob 由 sh 展开，exec 后 java 成为容器主进程（信号可正常送达）
-    entrypoint: ["sh", "-c", "exec java -jar /app/*server*.jar"]
+    # exec 后 java 成为容器主进程（信号可正常送达）
+    entrypoint: ["sh", "-c", "exec java -jar /app/app.jar"]
     # 单库 PostgreSQL + 文章正文处理，512m 上限 → JVM 自动取 ~300m 堆
     mem_limit: 512m
     depends_on:
@@ -122,16 +123,16 @@ services:
     container_name: miskk-nginx
     restart: unless-stopped
     environment:
-      # nginx.conf 经 nginx 镜像 template 机制在启动时按环境变量渲染
-      # （挂载为 /etc/nginx/templates/default.conf.template，默认 80 / 8100）
+      # miskk-nginx.conf 经 nginx 镜像 template 机制在启动时按环境变量渲染
+      # （生成 /etc/nginx/conf.d/default.conf，由主配置 include 加载，默认 80 / 8100）
       NGINX_PORT: ${NGINX_PORT:-80}
       APP_PORT: ${APP_PORT:-8100}
     ports:
       - "${SITE_PORT:-80}:${NGINX_PORT:-80}"
     volumes:
-      # 本机 npm run build 产物（.env 可改指）+ 与 auto 版同一份 nginx.conf
+      # 本机 npm run build 产物与 nginx 模板均可在 .env 改指
       - ${FRONTEND_DIST_DIR:-../frontend/dist}:/usr/share/nginx/html:ro
-      - ./nginx.conf:/etc/nginx/templates/default.conf.template:ro
+      - ${NGINX_CONF_FILE:-./miskk-nginx.conf}:/etc/nginx/templates/default.conf.template:ro
     depends_on:
       - app
     mem_limit: 32m

@@ -22,8 +22,10 @@ miskkBlog/
 ├── frontend/                   # 前端（Vite 6 + React 18 + TS + AntD 5）
 ├── sql/miskk_blog.sql          # PostgreSQL 建库脚本（全部 10 张表 + 种子，可重复执行）
 └── docker/
+    ├── .env.example            # 部署环境变量模板（密钥、端口、本机产物/SQL/nginx 路径）
     ├── docker-compose.yml      # 挂载本机已构建产物（jar/dist）启动全栈；亦可只起基础设施
-    └── docker-compose.auto.yml # 一键编译+部署：拉代码即起全栈（容器内构建），见「生产部署」
+    ├── docker-compose.auto.yml # 一键编译+部署：拉代码即起全栈（容器内构建），见「生产部署」
+    └── miskk-nginx.conf        # nginx server 模板：托管前端并反代 /api
 ```
 
 ## 技术栈
@@ -129,7 +131,9 @@ Vite 开发服务器把 `/api` 代理到后端 `http://localhost:8100`。
 
 ### 6. 生产部署（Ubuntu 云服务器等）
 
-全容器一键部署：后端在容器内 Maven 多阶段构建，前端 npm build 后由 nginx 托管并反代 `/api`。服务器上只需装好 Docker（含 compose 插件）：
+#### 方式一：容器内一键构建（推荐全新服务器使用）
+
+后端在容器内 Maven 多阶段构建，前端 npm build 后由 nginx 托管并反代 `/api`。服务器上只需装好 Docker（含 compose 插件）：
 
 ```bash
 git clone https://github.com/CancerQuaker/miskkBlog.git
@@ -138,15 +142,41 @@ cp .env.example .env    # 必填 POSTGRES_PASSWORD / JWT_SECRET；端口/JVM 等
 bash deploy.sh          # 等价于 docker compose -f docker-compose.auto.yml up -d --build
 ```
 
-说明：
+首次构建约需几分钟；国内服务器可在 `.env` 配置 `MAVEN_MIRROR` / `NPM_REGISTRY` 镜像加速。
 
-- **本机已有构建产物**时（根目录 `mvn clean install -DskipTests` + `frontend` 下 `npm run build`），可改用同目录 `docker-compose.yml`：不做容器内编译，直接挂载 `backend/miskk-server/target/*.jar` 与 `frontend/dist` 启动同一套全栈（路径可在 `.env` 用 `APP_JAR_DIR` / `FRONTEND_DIST_DIR` 改指别处；与 `.env` 通用；只想起基础设施时 `docker compose up -d db redis`）。
-- **安全模型**：默认只有 nginx 暴露 `SITE_PORT`（默认 80）端口，PostgreSQL/Redis/后端都在 compose 内部网络（`docker-compose.yml` 另把后端映射到宿主机 `127.0.0.1:8100`，便于宿主机 nginx 反代），云安全组只需放行 80/443。所有端口（宿主机侧与容器内侧）都可在 `.env` 自定义，PostgreSQL/Redis 的宿主机映射在 compose 里以注释预留。
-- **首次构建**约需几分钟（容器内编译）；国内服务器可在 `.env` 配 `MAVEN_MIRROR` / `NPM_REGISTRY` 镜像加速。
+#### 方式二：直接挂载本机构建产物
+
+已在本机执行根目录 `mvn clean install -DskipTests` 和 `frontend/` 下 `npm run build` 时，可使用默认的 `docker-compose.yml`，跳过容器内编译：
+
+```bash
+cd docker
+cp .env.example .env     # 已存在则无需重复复制
+# 编辑 .env，填写密钥；使用自定义产物/SQL/nginx 路径时一并修改下表变量
+docker compose up -d
+# 本地开发只起基础设施：docker compose up -d db redis
+```
+
+以下路径变量仅用于 `docker-compose.yml`；auto 版在容器内构建前后端，不读取本机 jar/dist：
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `APP_JAR_FILE` | `../backend/miskk-server/target/miskk-server-1.0.0.jar` | 后端**可执行 jar 文件**，挂载为容器内 `/app/app.jar`，宿主机文件名和版本号不受限制 |
+| `FRONTEND_DIST_DIR` | `../frontend/dist` | 前端打包产物**目录**，其中必须包含 `index.html` |
+| `SQL_INIT_FILE` | `../sql/miskk_blog.sql` | PostgreSQL 初始化 SQL **文件**，挂载到 `/docker-entrypoint-initdb.d/miskk_blog.sql` |
+| `NGINX_CONF_FILE` | `./miskk-nginx.conf` | nginx server 模板**文件**，挂载到 `/etc/nginx/templates/default.conf.template` |
+
+- **路径规则**：相对路径均以 `docker/` 目录为基准，与执行命令时所在目录无关；也可使用绝对路径。Windows 路径建议写成 `D:/Code/miskkBlog/...`，不要使用反斜杠。
+- **更新产物或修改路径后**：`dist` 目录内容更新会直接生效；jar 是单文件挂载，本机重新构建后应在 `docker/` 下执行 `docker compose up -d --force-recreate app`，确保容器指向新文件。修改任何路径变量后，也需用 `docker compose up -d --force-recreate db app nginx` 重建对应服务，而不是只执行 `restart`。
+- **SQL 初始化**：`/docker-entrypoint-initdb.d` 中的脚本只会在 PostgreSQL **空数据卷首次初始化**时自动执行；已有 `pg-data` 不会因重启、修改 SQL 或更换 `SQL_INIT_FILE` 而重跑。需要补跑时按「快速开始 → 2. 初始化数据库」的 Docker 命令手动导入，并将命令中的默认 SQL 路径替换为实际文件。
+- **nginx 加载链路**：`miskk-nginx.conf`（或 `NGINX_CONF_FILE` 指定的文件）→ `/etc/nginx/templates/default.conf.template` → 官方 nginx 启动脚本渲染 `${NGINX_PORT}` / `${APP_PORT}` → `/etc/nginx/conf.d/default.conf`。该结果会被主配置的 `include /etc/nginx/conf.d/*.conf;` 自动加载，无需修改容器内的主 `nginx.conf`。
+
+#### 通用说明
+
+- **安全模型**：默认只有 nginx 暴露 `SITE_PORT`（默认 80）端口，PostgreSQL/Redis/后端都在 compose 内部网络（`docker-compose.yml` 另把后端映射到宿主机 `127.0.0.1:8100`，便于宿主机 nginx 反代），云安全组只需放行 80/443。`SITE_PORT` / `NGINX_PORT` / `APP_PORT` 等可在 `.env` 自定义；PostgreSQL/Redis 的宿主机映射在 compose 里以注释预留。
 - **数据备份**：`pg-data` / `redis-data` 卷 + `docker/uploads/` 目录（上传图片）。
 - **HTTPS**：宿主机再加一层 Caddy / certbot 终止证书，反代到 80 即可。
-- **内存**：单个 Java 进程 + 单库，2核2G 即可从容运行（默认 mem_limit 基线：app 512m / PostgreSQL 384m / Redis 64m，约 1G）；更紧张时设 `JAVA_TOOL_OPTIONS=-Xmx256m`。
-- 首次启动自动初始化数据（仅空数据卷时执行 `sql/miskk_blog.sql`；数据卷非空或失败时需手动执行，方法见「快速开始 → 2. 初始化数据库」的 Docker 部分）；默认管理员 `admin / admin123`，部署后请尽快改密。
+- **内存**：单个 Java 进程 + 单库，2核2G 即可从容运行。本机产物版默认 mem_limit 基线为 app 512m / PostgreSQL 384m / Redis 64m（约 1G）；更紧张时设 `JAVA_TOOL_OPTIONS=-Xmx256m`。
+- **默认账号**：首次初始化后管理员为 `admin / admin123`，部署后请尽快改密。
 
 ## 接口文档（Knife4j）
 
