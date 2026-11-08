@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 
 if [ ! -f .env ]; then
   cp .env.example .env
-  echo "已生成 docker/.env，请修改其中的 POSTGRES_PASSWORD / JWT_SECRET 后重新执行本脚本。"
+  echo "已生成 docker/.env，请修改其中的 JWT_SECRET 后重新执行本脚本；POSTGRES_PASSWORD 缺省为 123456。"
   exit 1
 fi
 

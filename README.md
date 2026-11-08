@@ -50,7 +50,7 @@ miskkBlog/
 
 ```bash
 cd docker
-cp .env.example .env     # 本地开发建议把 POSTGRES_PASSWORD 设为 123456（与后端默认连接参数一致）、POSTGRES_USER 设为 postgres
+cp .env.example .env     # 本地开发把 POSTGRES_USER 设为 postgres；POSTGRES_PASSWORD 缺省 123456，与后端默认连接参数一致
 # 编辑 docker-compose.yml，放开 db / redis 注释掉的 ports（后端要从宿主机连接）
 docker compose up -d db redis    # PostgreSQL(5432) + Redis(6379)，首次启动自动初始化数据
 ```
@@ -72,7 +72,7 @@ psql -U postgres -d miskk_blog -f sql/miskk_blog.sql
 > 脚本可重复执行：用户/友链/分类/标签幂等冲突跳过；种子文章与评论按固定 id 段删除后重灌（发布/评论时间按执行日相对计算）；
 > 末尾会 `setval` 对齐各表 IDENTITY 序列（显式插入 id 不推进序列，不对齐则应用首次自增插入即主键冲突）。
 
-数据跑在 Docker 容器里时（容器名 `miskk-pg`、账号密码即 `docker/.env` 里的 `POSTGRES_USER`/`POSTGRES_PASSWORD`；两个 compose 文件首次启动空数据卷时会自动执行 `sql/miskk_blog.sql`，无需手动）：
+数据跑在 Docker 容器里时（容器名 `miskk-pg`、账号密码即 `docker/.env` 里的 `POSTGRES_USER`/`POSTGRES_PASSWORD`，未设置时默认为 `miskk` / `123456`；两个 compose 文件首次启动空数据卷时会自动执行 `sql/miskk_blog.sql`，无需手动）：
 
 ```bash
 cd docker
@@ -138,7 +138,7 @@ Vite 开发服务器把 `/api` 代理到后端 `http://localhost:8100`。
 ```bash
 git clone https://github.com/CancerQuaker/miskkBlog.git
 cd miskkBlog/docker
-cp .env.example .env    # 必填 POSTGRES_PASSWORD / JWT_SECRET；端口/JVM 等可选变量见文件内说明
+cp .env.example .env    # 必填 JWT_SECRET；POSTGRES_PASSWORD 缺省 123456（生产请设置强密码）
 bash deploy.sh          # 等价于 docker compose -f docker-compose.auto.yml up -d --build
 ```
 

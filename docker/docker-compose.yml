@@ -11,7 +11,7 @@
 # FRONTEND_DIST_DIR、SQL_INIT_FILE、NGINX_CONF_FILE 改指其他位置（见 .env.example）。
 #
 # 用法：
-#   cp .env.example .env              # 必填 POSTGRES_PASSWORD / JWT_SECRET（与 auto 版通用）
+#   cp .env.example .env              # 必填 JWT_SECRET；POSTGRES_PASSWORD 缺省 123456（与 auto 版通用）
 #   docker compose up -d              # 全栈一套启动：PostgreSQL/Redis/后端/nginx
 #   docker compose up -d db redis     # 只起基础设施（后端跑 IDEA、前端跑 Vite 时）
 #
@@ -36,7 +36,7 @@ x-backend-env: &backend-env
   JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=60.0 -XX:+UseSerialGC}
   POSTGRES_ADDR: db:${POSTGRES_SERVER_PORT:-5432}
   POSTGRES_USER: ${POSTGRES_USER:-miskk}
-  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 docker/.env 中设置 POSTGRES_PASSWORD}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
   REDIS_HOST: redis
   REDIS_PORT: ${REDIS_SERVER_PORT:-6379}
   REDIS_PASSWORD: ${REDIS_PASSWORD:-}
@@ -55,7 +55,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-miskk}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 docker/.env 中设置 POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
       POSTGRES_DB: miskk_blog
       TZ: ${TZ:-Asia/Shanghai}
       # 首次启动（空数据卷）自动执行建库脚本（建表 + 种子，可重复执行）

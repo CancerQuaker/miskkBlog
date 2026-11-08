@@ -3,7 +3,7 @@
 # 用法（服务器上）：
 #   git clone https://github.com/CancerQuaker/miskkBlog.git
 #   cd miskkBlog/docker
-#   cp .env.example .env    # 必填 POSTGRES_PASSWORD / JWT_SECRET，其余可选变量见文件内说明
+#   cp .env.example .env    # 必填 JWT_SECRET；POSTGRES_PASSWORD 缺省 123456，其余可选变量见文件内说明
 #   bash deploy.sh          # 等价于 docker compose -f docker-compose.auto.yml up -d --build
 #
 # 安全模型：默认只有 nginx 对外（SITE_PORT，默认 80），PostgreSQL/Redis/后端都只在 compose 内部网络可达，
@@ -23,7 +23,7 @@ x-backend-env: &backend-env
   JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:-}
   POSTGRES_ADDR: db:${POSTGRES_SERVER_PORT:-5432}
   POSTGRES_USER: ${POSTGRES_USER:-miskk}
-  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 docker/.env 中设置 POSTGRES_PASSWORD}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
   REDIS_HOST: redis
   REDIS_PORT: ${REDIS_SERVER_PORT:-6379}
   REDIS_PASSWORD: ${REDIS_PASSWORD:-}
@@ -42,7 +42,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-miskk}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 docker/.env 中设置 POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
       POSTGRES_DB: miskk_blog
       TZ: ${TZ:-Asia/Shanghai}
       POSTGRES_INITDB_ARGS: "--encoding=UTF8"
