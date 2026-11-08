@@ -105,6 +105,7 @@ async function fetchMetingPlaylist(): Promise<MusicTrack[]> {
  */
 export default function MusicPlayer({ panelOpen, onTogglePanel }: { panelOpen: boolean; onTogglePanel: () => void }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const shouldPlayRef = useRef(false); // 当前曲目的播放意图，失败跳曲时继承，避免首次加载失败后自动开播
   const loadVerRef = useRef(0); // 换曲版本号：丢弃过期的 play()/歌词异步回调
   const failedVerRef = useRef(-1); // 已处理过失败的换曲版本号（play() reject 与 error 事件会重复上报）
   const errStreakRef = useRef(0); // 连续失败次数，超过曲单长度则停止跳曲
@@ -119,7 +120,7 @@ export default function MusicPlayer({ panelOpen, onTogglePanel }: { panelOpen: b
   const lyricsRef = useRef<LyricLine[]>([]);
   const lrcIndexRef = useRef(-1);
   const playIndexRef = useRef<(i: number, auto: boolean) => void>(() => {});
-  const autoStepRef = useRef<(dir: 1 | -1) => void>(() => {});
+  const autoStepRef = useRef<(dir: 1 | -1, auto?: boolean) => void>(() => {});
   const handleFailedRef = useRef<() => void>(() => {});
 
   const [playlist, setPlaylist] = useState<MusicTrack[]>([]);
@@ -161,6 +162,7 @@ export default function MusicPlayer({ panelOpen, onTogglePanel }: { panelOpen: b
     setLrcIndex(-1);
     setError('');
     const track = list[i];
+    shouldPlayRef.current = auto;
     audio.src = track.url;
 
     setLyrics([]);
@@ -192,8 +194,8 @@ export default function MusicPlayer({ panelOpen, onTogglePanel }: { panelOpen: b
   };
   playIndexRef.current = playIndex;
 
-  /** 顺序/随机切曲（事件回调与按钮共用） */
-  const autoStep = (dir: 1 | -1) => {
+  /** 顺序/随机切曲（事件回调与按钮共用）；失败跳曲可传入 auto=false 保持暂停 */
+  const autoStep = (dir: 1 | -1, auto = true) => {
     const list = playlistRef.current;
     const len = list.length;
     if (!len) return;
@@ -205,19 +207,20 @@ export default function MusicPlayer({ panelOpen, onTogglePanel }: { panelOpen: b
     } else {
       ni = (indexRef.current + dir + len) % len;
     }
-    playIndexRef.current(ni, true);
+    playIndexRef.current(ni, auto);
   };
   autoStepRef.current = autoStep;
 
-  /** 播放失败处理：自动跳下一首，整轮都失败才停下提示 */
+  /** 播放/加载失败：按当前曲目的播放意图跳下一首，整轮都失败才停下提示 */
   const handleFailed = () => {
     if (failedVerRef.current === loadVerRef.current) return; // play() reject 与 error 事件只处理一次
     failedVerRef.current = loadVerRef.current;
     errStreakRef.current += 1;
     const len = playlistRef.current.length;
     if (musicConfig.autoSkipOnError && len > 1 && errStreakRef.current < len) {
-      autoStepRef.current(1);
+      autoStepRef.current(1, shouldPlayRef.current);
     } else {
+      shouldPlayRef.current = false;
       setPlaying(false);
       setError('播放失败，请稍后重试');
     }
@@ -321,8 +324,13 @@ export default function MusicPlayer({ panelOpen, onTogglePanel }: { panelOpen: b
   const togglePlay = () => {
     const audio = audioRef.current;
     if (!audio || !playlist.length) return;
-    if (audio.paused) audio.play().catch(() => handleFailedRef.current());
-    else audio.pause();
+    if (audio.paused) {
+      shouldPlayRef.current = true;
+      audio.play().catch(() => handleFailedRef.current());
+    } else {
+      shouldPlayRef.current = false;
+      audio.pause();
+    }
   };
 
   const playAt = (i: number) => {
